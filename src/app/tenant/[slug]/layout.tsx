@@ -1,11 +1,10 @@
-import React from "react"
+import { DashboardLayout } from "@/components/app-ui/dashboard/dashboard-layout";
+import React from "react";
 
 interface TenantLayoutProps {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 export default async function TenantLayout({ children }: TenantLayoutProps) {
-  return (
-    <>{children}</>
-  )
+  return <DashboardLayout>{children}</DashboardLayout>;
 }
