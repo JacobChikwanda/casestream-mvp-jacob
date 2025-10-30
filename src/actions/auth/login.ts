@@ -3,6 +3,7 @@
 import { createSupabaseServerRouteHandler } from "@/lib/supabase";
 import { prisma } from "@/lib/db";
 import { getTenantUrl } from "@/lib/helpers/tenant";
+import { createClient } from "@supabase/supabase-js";
 
 export interface LoginResult {
   success: boolean;
@@ -103,21 +104,39 @@ export async function loginAction(
 
     const accountSlug = staffRecord.account.accountSlug;
 
-    // Reuse the existing Supabase client (which uses service role) for admin update
+    // Initialize Supabase admin client to update user metadata
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      },
+    );
+
     // Update app_metadata with accountSlug (merge with existing to avoid overwriting other fields)
     const currentMetadata = authData.user.app_metadata || {};
     const newMetadata = { ...currentMetadata, accountSlug };
 
-    const { error: updateError } = await supabase.auth.admin.updateUserById(
-      authData.user.id,
-      { app_metadata: newMetadata }
-    );
+    const { error: updateError } = await supabaseAdmin.auth.admin
+      .updateUserById(
+        authData.user.id,
+        { app_metadata: newMetadata },
+      );
 
     if (updateError) {
-      console.error("[login] Error updating app_metadata:", updateError.message);
+      console.error(
+        "[login] Error updating app_metadata:",
+        updateError.message,
+      );
       // Proceed with login anyway, as metadata update is not critical for this session
     } else {
-      console.log("[login] Updated user app_metadata with accountSlug:", accountSlug);
+      console.log(
+        "[login] Updated user app_metadata with accountSlug:",
+        accountSlug,
+      );
     }
 
     console.log(

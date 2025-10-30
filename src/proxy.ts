@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { createSupabaseServerRouteHandler } from "@/lib/supabase";
+import { createSupabaseMiddleware } from "@/lib/supabase";
 import { getSubdomainFromHost, getTenantUrl } from "./lib/helpers/tenant";
 
 // Exclude static assets, images, and API routes
@@ -49,8 +49,15 @@ export async function proxy(req: NextRequest) {
   const subdomain = getSubdomainFromHost(host);
   const pathname = req.nextUrl.pathname;
 
+  // Create response object first
+  let response = NextResponse.next({
+    request: {
+      headers: req.headers,
+    },
+  });
+
   // Initialize Supabase for auth checks
-  const supabase = await createSupabaseServerRouteHandler();
+  const supabase = createSupabaseMiddleware(req, response);
   const {
     data: { user: authUser },
   } = await supabase.auth.getUser();
@@ -59,9 +66,11 @@ export async function proxy(req: NextRequest) {
     if (target.startsWith("/")) {
       const url = req.nextUrl.clone();
       url.pathname = target;
-      return NextResponse.rewrite(url);
+      response = NextResponse.rewrite(url);
+      return response;
     }
-    return NextResponse.redirect(target);
+    response = NextResponse.redirect(target);
+    return response;
   }
 
   // Cache the user's account slug for this request (now synchronous from metadata)
@@ -95,6 +104,11 @@ export async function proxy(req: NextRequest) {
     if (authUser) {
       const accountSlug = getCachedUserAccountSlug();
       if (accountSlug) {
+        // If we're on a subdomain that matches the user's account, redirect to dashboard
+        if (subdomain && subdomain === accountSlug) {
+          return NextResponse.redirect(new URL("/dashboard", req.url));
+        }
+        // Otherwise, redirect to their proper tenant dashboard
         return redirectOrRewrite(getTenantUrl(accountSlug, "/dashboard"));
       }
     }
