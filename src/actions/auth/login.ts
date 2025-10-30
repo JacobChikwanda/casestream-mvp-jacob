@@ -1,0 +1,136 @@
+"use server";
+
+import { createSupabaseServerRouteHandler } from "@/lib/supabase";
+import { prisma } from "@/lib/db";
+
+export interface LoginResult {
+  success: boolean;
+  message: string;
+  redirectTo?: string;
+  userId?: string;
+  accountSlug?: string;
+}
+
+/**
+ * Server action for login - handles authentication securely on the server
+ */
+export async function loginAction(
+  email: string,
+  password: string,
+): Promise<LoginResult> {
+  try {
+    if (!email || !password) {
+      return {
+        success: false,
+        message: "Email and password are required",
+      };
+    }
+
+    if (password.length < 8) {
+      return {
+        success: false,
+        message: "Invalid credentials",
+      };
+    }
+
+    console.log("[login] Attempting login for:", email);
+
+    const supabase = await createSupabaseServerRouteHandler();
+
+    // Sign in with Supabase
+    const { data: authData, error: authError } = await supabase.auth
+      .signInWithPassword({
+        email,
+        password,
+      });
+
+    if (authError) {
+      console.error("[login] Supabase auth error:", authError.message);
+      return {
+        success: false,
+        message: "Invalid email or password",
+      };
+    }
+
+    if (!authData.user) {
+      console.error("[login] No user returned from Supabase");
+      return {
+        success: false,
+        message: "Invalid email or password",
+      };
+    }
+
+    console.log("[login] Supabase auth successful for user:", authData.user.id);
+
+    // Get user's staff record from Prisma
+    const staffRecord = await prisma.staff.findUnique({
+      where: { id: authData.user.id },
+      select: {
+        id: true,
+        name: true,
+        workEmail: true,
+        staffGroup: true,
+        applicationAdmin: true,
+        account: {
+          select: {
+            id: true,
+            accountSlug: true,
+            firmName: true,
+          },
+        },
+      },
+    });
+
+    if (!staffRecord) {
+      console.error(
+        "[login] Staff record not found for user:",
+        authData.user.id,
+      );
+      return {
+        success: false,
+        message: "User not found in system",
+      };
+    }
+
+    if (!staffRecord.account) {
+      console.error("[login] Account not found for staff:", authData.user.id);
+      return {
+        success: false,
+        message: "User not associated with any account",
+      };
+    }
+
+    const accountSlug = staffRecord.account.accountSlug;
+
+    console.log(
+      "[login] Login successful for:",
+      staffRecord.name,
+      "account:",
+      accountSlug,
+    );
+
+    // Determine redirect based on role
+    const pathname = "/dashboard";
+
+    // Build tenant URL
+    const isDev = process.env.NODE_ENV === "development";
+    const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN || "casestream.com";
+    const redirectTo = isDev
+      ? `http://${accountSlug}.localhost:3000${pathname}`
+      : `https://${accountSlug}.${baseDomain}${pathname}`;
+
+    return {
+      success: true,
+      message: "Login successful",
+      redirectTo,
+      userId: authData.user.id,
+      accountSlug,
+    };
+  } catch (error) {
+    console.error("[login] Server action error:", error);
+    return {
+      success: false,
+      message: "An error occurred during login",
+    };
+  }
+}

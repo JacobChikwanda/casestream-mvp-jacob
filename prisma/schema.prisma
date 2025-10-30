@@ -1,0 +1,1098 @@
+// ============================================================================
+// LEGAL MANAGEMENT SYSTEM - PRISMA SCHEMA
+// Production-Ready with Best Practices
+// ============================================================================
+// Key Design Principles:
+// 1. Multi-tenant architecture with tenant isolation
+// 2. Audit trail with Staff relationships (no extra queries via include)
+// 3. Type-safe enums instead of string validation in DB
+// 4. Proper money handling with Decimal type
+// 5. Indexes on frequently queried fields
+// 6. Clean camelCase naming (PostgreSQL will auto-snake_case)
+// ============================================================================
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ============================================================================
+// ENUM DEFINITIONS
+// ============================================================================
+
+enum PayType {
+  SALARY
+  HOURLY
+}
+
+enum EmploymentStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum StaffGroup {
+  ATTORNEY
+  LAW_CLERK
+  STAFF
+  FIRM_MANAGER
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum Race {
+  AMERICAN_INDIAN_ALASKA_NATIVE
+  ASIAN
+  BLACK_AFRICAN_AMERICAN
+  NATIVE_HAWAIIAN_PACIFIC_ISLANDER
+  CAUCASIAN
+  HISPANIC_LATINO
+}
+
+enum PracticeArea {
+  PERSONAL_INJURY
+  FAMILY
+  ESTATE_PLANNING
+  PROBATE
+  CORPORATE
+  CIVIL_LITIGATION
+  IMMIGRATION
+  BANKRUPTCY
+  CRIMINAL_DEFENSE
+  TAX
+  MEDICAL_MALPRACTICE
+  WORKERS_COMPENSATION
+}
+
+enum CaseStage {
+  PRE_CHARGE
+  LOWER_COURT
+  UPPER_COURT
+  APPEALS_COURT
+}
+
+enum FeeType {
+  FLAT_FEE
+  HOURLY
+  CONTINGENCY
+  PRO_BONO
+  HYBRID_FLAT_HOURLY
+  HYBRID_FLAT_CONTINGENCY
+  HYBRID_HOURLY_CONTINGENCY
+}
+
+enum TrialType {
+  BENCH_TRIAL
+  JURY_TRIAL
+}
+
+enum CaseStatus {
+  OPEN
+  GET_REVIEW
+  CLOSED
+}
+
+enum ContactGroup {
+  ADVERSE_PARTY
+  ATTORNEY
+  CLIENT
+  CLIENT_ASSISTANT
+  CLIENT_FAMILY
+  CLIENT_FRIEND
+  CO_COUNSEL
+  COURT_STAFF
+  EXPERT
+  INSURANCE_ADJUSTER
+  INVESTIGATOR
+  JUDGE
+  LAW_FIRM
+  LAW_ENFORCEMENT
+  OTHER_LEGAL
+}
+
+enum AccountType {
+  PERSONAL_CHECKING
+  PERSONAL_SAVINGS
+  BUSINESS_CHECKING
+  BUSINESS_SAVINGS
+  TRUST
+  OPERATING
+  IOLTA
+}
+
+enum ActivityAction {
+  ADDED
+  EDITED
+  DELETED
+}
+
+enum LeadStatus {
+  OPEN
+  WON
+  LOST
+}
+
+enum LeadStage {
+  PROSPECT
+  FOLLOW_UP
+  CONSULT
+}
+
+enum LeadLostReason {
+  NO_MONEY
+  NO_CASE
+  CALLING_FOR_INFORMATION
+  MARKETING
+  WRONG_NUMBER
+  OUT_OF_STATE
+  OUTSIDE_PRACTICE_AREA
+  HIRED_SOMEONE_ELSE
+}
+
+enum DocumentType {
+  HARDCOPY
+  DIGITAL
+  DISC
+  USB
+  HARD_DRIVE
+}
+
+enum ReminderDuration {
+  MINUTES
+  HOURS
+  DAYS
+  WEEKS
+}
+
+enum BillableStatus {
+  OPEN
+  INVOICED
+}
+
+enum TaskPriority {
+  NORMAL
+  HIGH
+}
+
+enum TaskStatus {
+  OPEN
+  CLOSED
+}
+
+// ============================================================================
+// CORE TENANT/ACCOUNT MODEL
+// ============================================================================
+
+model Account {
+  id          String   @id @default(uuid()) @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   Staff?   @relation("AccountCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdById String?  @db.Uuid
+  updatedBy   Staff?   @relation("AccountUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  updatedById String?  @db.Uuid
+
+  firmName    String
+  phone       String
+  fax         String
+  email       String   @db.VarChar(255)
+  logo        String?
+  accountSlug String   @unique
+  address     Json     // {line1, line2, city, state, zip, country}
+
+  // Relationships
+  staff           Staff[]
+  cases           Case[]
+  contacts        Contact[]
+  leads           Lead[]
+  documents       Document[]
+  events          Event[]
+  timeEntries     TimeEntry[]
+  expenses        Expense[]
+  activityLogs    ActivityLog[]
+  bankAccounts    BankAccount[]
+  reminders       Reminder[]
+  requirements    Requirement[]
+  tasks           Task[]
+  timesheets      Timesheet[]
+  updates         Update[]
+  typeOfActions   TypeOfAction[]
+  causeOfActions  CauseOfAction[]
+  folders         Folder[]
+
+  @@index([accountSlug])
+}
+
+// ============================================================================
+// STAFF/USERS MODEL
+// ============================================================================
+
+model Staff {
+  id          String            @id @default(uuid()) @db.Uuid
+  accountId   String            @db.Uuid
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  createdBy   Staff?            @relation("StaffCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdById String?           @db.Uuid
+  updatedBy   Staff?            @relation("StaffUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  updatedById String?           @db.Uuid
+
+  // Personal Information
+  name                  String
+  email                 String   @db.VarChar(255)
+  phone                 String
+  workEmail             String   @unique @db.VarChar(255)
+  workPhone             String
+  extension             String
+  dob                   DateTime @db.Date
+  gender                Gender?
+  race                  Race?
+  address               Json     // {line1, line2, city, state, zip, country}
+
+  // Employment Information
+  hireDate              DateTime          @db.Date
+  leaveDate             DateTime?         @db.Date
+  employmentStatus      EmploymentStatus  @default(ACTIVE)
+  staffGroup            StaffGroup
+  applicationAdmin      Boolean           @default(false)
+  reportingToId         String?           @db.Uuid
+  reportingTo           Staff?            @relation("StaffReporting", fields: [reportingToId], references: [id], onDelete: SetNull)
+  managedStaff          Staff[]           @relation("StaffReporting")
+
+  // Compensation
+  defaultCaseRate       Decimal           @default(0) @db.Decimal(10, 2)
+  payType               PayType           @default(SALARY)
+  payRate               Decimal           @default(0) @db.Decimal(10, 2)
+  mileageReimbursement  Decimal           @default(0) @db.Decimal(10, 2)
+  enableOvertime        Boolean           @default(false)
+  overtimeRate          Decimal           @default(0) @db.Decimal(10, 2)
+  weeklyBaseHours       Decimal           @default(40) @db.Decimal(5, 2)
+
+  // Break/Rest Rules
+  enableAutoBreakDeduction  Boolean       @default(false)
+  breaktimeBaseHours       Decimal       @default(0) @db.Decimal(5, 2)
+  breaktimeRate            Decimal       @default(0) @db.Decimal(10, 2)
+
+  // Performance Incentives
+  enablePerformanceIncentives   Boolean   @default(false)
+  intakeStaffIncentive          Decimal   @default(0) @db.Decimal(10, 2)
+  intakeOverrideIncentive       Decimal   @default(0) @db.Decimal(10, 2)
+  managerOverrideIncentive      Decimal   @default(0) @db.Decimal(10, 2)
+  referralIncentive             Decimal   @default(0) @db.Decimal(10, 2)
+
+  // Banking Information
+  bankName              String
+  bankRoutingNumber     String
+  bankAccountNumber     String
+
+  // Emergency Contact
+  emergencyContact      String
+  emergencyContactPhone String
+  emergencyContactEmail String
+
+  // Resume (URL/file path)
+  resume                String?
+
+  // Relationships
+  account               Account           @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  
+  // What this staff created/updated
+  createdAccounts       Account[]         @relation("AccountCreatedBy")
+  updatedAccounts       Account[]         @relation("AccountUpdatedBy")
+  createdStaff          Staff[]           @relation("StaffCreatedBy")
+  updatedStaff          Staff[]           @relation("StaffUpdatedBy")
+  createdCases          Case[]            @relation("CaseCreatedBy")
+  updatedCases          Case[]            @relation("CaseUpdatedBy")
+  createdContacts       Contact[]         @relation("ContactCreatedBy")
+  updatedContacts       Contact[]         @relation("ContactUpdatedBy")
+  createdLeads          Lead[]            @relation("LeadCreatedBy")
+  updatedLeads          Lead[]            @relation("LeadUpdatedBy")
+  createdDocuments      Document[]        @relation("DocumentCreatedBy")
+  updatedDocuments      Document[]        @relation("DocumentUpdatedBy")
+  createdEvents         Event[]           @relation("EventCreatedBy")
+  updatedEvents         Event[]           @relation("EventUpdatedBy")
+  createdActivities     Activity[]        @relation("ActivityCreatedBy")
+  updatedActivities     Activity[]        @relation("ActivityUpdatedBy")
+  createdTimeEntries    TimeEntry[]       @relation("TimeEntryCreatedBy")
+  updatedTimeEntries    TimeEntry[]       @relation("TimeEntryUpdatedBy")
+  createdExpenses       Expense[]         @relation("ExpenseCreatedBy")
+  updatedExpenses       Expense[]         @relation("ExpenseUpdatedBy")
+  createdBankAccounts   BankAccount[]     @relation("BankAccountCreatedBy")
+  updatedBankAccounts   BankAccount[]     @relation("BankAccountUpdatedBy")
+  createdReminders      Reminder[]        @relation("ReminderCreatedBy")
+  updatedReminders      Reminder[]        @relation("ReminderUpdatedBy")
+  createdRequirements   Requirement[]     @relation("RequirementCreatedBy")
+  updatedRequirements   Requirement[]     @relation("RequirementUpdatedBy")
+  createdTasks          Task[]            @relation("TaskCreatedBy")
+  updatedTasks          Task[]            @relation("TaskUpdatedBy")
+  createdTimesheets     Timesheet[]       @relation("TimesheetCreatedBy")
+  updatedTimesheets     Timesheet[]       @relation("TimesheetUpdatedBy")
+  createdUpdates        Update[]          @relation("UpdateCreatedBy")
+  updatedUpdates        Update[]          @relation("UpdateUpdatedBy")
+  createdFolders        Folder[]          @relation("FolderCreatedBy")
+  updatedFolders        Folder[]          @relation("FolderUpdatedBy")
+  createdTypeOfActions  TypeOfAction[]    @relation("TypeOfActionCreatedBy")
+  updatedTypeOfActions  TypeOfAction[]    @relation("TypeOfActionUpdatedBy")
+  createdCauseOfActions CauseOfAction[]   @relation("CauseOfActionCreatedBy")
+  updatedCauseOfActions CauseOfAction[]   @relation("CauseOfActionUpdatedBy")
+
+  // Work relationships
+  caseStaff             CaseStaff[]
+  timeEntries           TimeEntry[]
+  expensesRecorded      Expense[]
+  activityLogs          ActivityLog[]
+  timesheets            Timesheet[]
+
+  @@unique([accountId, workEmail])
+  @@index([accountId])
+  @@index([reportingToId])
+}
+
+// ============================================================================
+// CASE MODEL
+// ============================================================================
+
+model Case {
+  id          String   @id @default(uuid()) @db.Uuid
+  accountId   String   @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   Staff    @relation("CaseCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdById String   @db.Uuid
+  updatedBy   Staff    @relation("CaseUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  updatedById String   @db.Uuid
+
+  // Case Identification
+  caseNumber              String   @unique
+  caseName                String
+  autoGenerateCaseName    Boolean  @default(true)
+  practiceArea            PracticeArea
+  caseStage               CaseStage @default(PRE_CHARGE)
+  caseStatus              CaseStatus @default(OPEN)
+
+  // Legal Details
+  causeOfActionId         String   @db.Uuid
+  causeOfAction           CauseOfAction @relation(fields: [causeOfActionId], references: [id], onDelete: Restrict)
+  caseDescription         String
+  incidentDate            DateTime
+  incidentLocation        String
+
+  // Statute of Limitations
+  addStatuteOfLimitations Boolean  @default(false)
+  statuteOfLimitationsDate DateTime?
+
+  // Billing - Retainers
+  feeType                 FeeType
+  flatFeeRetainer         Decimal  @default(0) @db.Decimal(10, 2)
+  hourlyRetainer          Decimal  @default(0) @db.Decimal(10, 2)
+
+  // Billing - Rates
+  preLitigationRate       Decimal  @default(0) @db.Decimal(10, 2)
+  litigationRate          Decimal  @default(0) @db.Decimal(10, 2)
+  litigationTrialRate     Decimal  @default(0) @db.Decimal(10, 2)
+
+  // Trial Management
+  trialIncluded           Boolean  @default(false)
+  trialType               TrialType?
+  hoursLimited            Boolean  @default(false)
+  hourLimit               Decimal  @default(0) @db.Decimal(10, 2)
+
+  // Expert/Investigation
+  expertIncluded          Boolean  @default(false)
+  expertBudget            Decimal  @default(0) @db.Decimal(10, 2)
+  investigatorIncluded    Boolean  @default(false)
+  investigatorBudget      Decimal  @default(0) @db.Decimal(10, 2)
+  recordSealIncluded      Boolean  @default(false)
+
+  // Dates
+  intakeDate              DateTime
+  closeDate               DateTime?
+  nextCaseSearch          DateTime
+
+  // Foreign Keys - Contacts
+  primaryContactId        String   @db.Uuid
+  primaryContact          Contact  @relation(name: "CasePrimaryContact", fields: [primaryContactId], references: [id], onDelete: Restrict)
+  referredById            String?  @db.Uuid
+  referredBy              Contact? @relation(name: "CaseReferredBy", fields: [referredById], references: [id], onDelete: SetNull)
+  courtId                 String?  @db.Uuid
+  court                   Contact? @relation(name: "CaseCourt", fields: [courtId], references: [id], onDelete: SetNull)
+  departmentId            String?  @db.Uuid
+  department              Contact? @relation(name: "CaseDepartment", fields: [departmentId], references: [id], onDelete: SetNull)
+  shareInfoWithId         String?  @db.Uuid
+  shareInfoWith           Contact? @relation(name: "CaseShareInfo", fields: [shareInfoWithId], references: [id], onDelete: SetNull)
+
+  // Relationships
+  account                 Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  caseStaff               CaseStaff[]
+  documents               Document[]
+  events                  Event[]
+  timeEntries             TimeEntry[]
+  expenses                Expense[]
+  updates                 Update[]
+  leads                   Lead[]
+  requirements            Requirement[]
+
+  @@unique([accountId, caseNumber])
+  @@index([accountId])
+  @@index([causeOfActionId])
+  @@index([primaryContactId])
+  @@index([practiceArea])
+  @@index([caseStatus])
+}
+
+// ============================================================================
+// CASE STAFF JUNCTION TABLE
+// ============================================================================
+
+model CaseStaff {
+  id        String  @id @default(uuid()) @db.Uuid
+  caseId    String  @db.Uuid
+  staffId   String  @db.Uuid
+  caseRate  Decimal @default(0) @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+
+  case      Case    @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  staff     Staff   @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, staffId])
+  @@index([caseId])
+  @@index([staffId])
+}
+
+// ============================================================================
+// CONTACTS MODEL
+// ============================================================================
+
+model Contact {
+  id          String   @id @default(uuid()) @db.Uuid
+  accountId   String   @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   Staff    @relation("ContactCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdById String   @db.Uuid
+  updatedBy   Staff    @relation("ContactUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  updatedById String   @db.Uuid
+
+  // Contact Information
+  name                  String
+  group                 ContactGroup
+  titlePosition         String
+  email                 String?  @db.VarChar(255)
+  mobilePhone           String?
+  alternatePhone        String?
+  workPhone             String?
+  fax                   String?
+  website               String?
+  address               Json     // {line1, line2, city, state, zip, country}
+
+  // Personal Details
+  dob                   DateTime? @db.Date
+  gender                Gender?
+  countryOfCitizenship  String   @default("United States")
+  nativeLanguage        String   @default("English")
+
+  // Court Contact Details
+  courtDetails          Boolean  @default(false)
+  department            String?
+  courtroom             String?
+
+  // Biographical Details
+  biographicalDetails   Boolean  @default(false)
+  education             String?
+  employment            String?
+  currentEmployer       String?
+  timeWithCurrentEmployer String?
+  communityService      Boolean  @default(false)
+  familySupport         Boolean  @default(false)
+
+  // Criminal History
+  criminalHistory       Boolean  @default(false)
+  criminalHistoryDescription String?
+  sourceOfFunds         String?
+
+  // Custody/Jail Information
+  custodyDetails        Boolean  @default(false)
+  jailPrisonId          String?  @db.Uuid
+  inmateId              String?
+  bailStatus            String?
+
+  // Relationships
+  account               Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  casesAsPrimary        Case[]   @relation(name: "CasePrimaryContact")
+  casesAsReferral       Case[]   @relation(name: "CaseReferredBy")
+  casesAsCourt          Case[]   @relation(name: "CaseCourt")
+  casesAsDepartment     Case[]   @relation(name: "CaseDepartment")
+  casesShareInfo        Case[]   @relation(name: "CaseShareInfo")
+  eventsAsLocation      Event[]  @relation(name: "EventLocation")
+  eventsAsDepartment    Event[]  @relation(name: "EventDepartment")
+  eventContacts         EventContact[]
+
+  @@unique([accountId, email])
+  @@index([accountId])
+  @@index([group])
+}
+
+// ============================================================================
+// LEAD MODEL
+// ============================================================================
+
+model Lead {
+  id          String      @id @default(uuid()) @db.Uuid
+  accountId   String      @db.Uuid
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  createdBy   Staff       @relation("LeadCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdById String      @db.Uuid
+  updatedBy   Staff       @relation("LeadUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  updatedById String      @db.Uuid
+
+  // Lead Information
+  leadStatus      LeadStatus @default(OPEN)
+  leadStage       LeadStage  @default(PROSPECT)
+  nextCourtDate   DateTime?
+
+  // Conversion Tracking
+  caseId          String?    @db.Uuid
+  case            Case?      @relation(fields: [caseId], references: [id], onDelete: SetNull)
+
+  // Lost Lead Tracking
+  lostReason      LeadLostReason?
+
+  // Relationships
+  account         Account    @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  reminders       Reminder[]
+
+  @@index([accountId])
+  @@index([leadStatus])
+  @@index([caseId])
+}
+
+// ============================================================================
+// DOCUMENT MODEL
+// ============================================================================
+
+model Document {
+  id          String      @id @default(uuid()) @db.Uuid
+  accountId   String      @db.Uuid
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  createdBy   Staff       @relation("DocumentCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdById String      @db.Uuid
+  updatedBy   Staff       @relation("DocumentUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  updatedById String      @db.Uuid
+
+  caseId              String      @db.Uuid
+  folderId            String      @db.Uuid
+
+  // Document Details
+  documentType        DocumentType
+  name                String
+  notes               String?
+  fileLink            String      // S3 URL or local file path
+  discovery           Boolean     @default(false)
+
+  // Review Tracking (JSON array of staff IDs who reviewed)
+  reviewedByStaffIds  String[]    // UUIDs of reviewing staff
+
+  // Relationships
+  account             Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  case                Case        @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  folder              Folder      @relation(fields: [folderId], references: [id], onDelete: Restrict)
+
+  @@index([accountId])
+  @@index([caseId])
+  @@index([folderId])
+}
+
+// ============================================================================
+// FOLDER MODEL
+// ============================================================================
+
+model Folder {
+  id          String      @id @default(uuid()) @db.Uuid
+  accountId   String      @db.Uuid
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  createdBy   Staff       @relation("FolderCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdById String      @db.Uuid
+  updatedBy   Staff       @relation("FolderUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  updatedById String      @db.Uuid
+
+  name                String
+
+  // Relationships
+  account             Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  documents           Document[]
+
+  @@index([accountId])
+}
+
+// ============================================================================
+// ACTIVITY MODEL
+// ============================================================================
+
+model Activity {
+  id          String      @id @default(uuid()) @db.Uuid
+  accountId   String      @db.Uuid
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  createdBy   Staff       @relation("ActivityCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdById String      @db.Uuid
+  updatedBy   Staff       @relation("ActivityUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  updatedById String      @db.Uuid
+
+  name                String
+  description         String?
+
+  // Relationships (no back-reference to Account - Activity is accessed via Event/TimeEntry/Expense)
+  events              Event[]
+  timeEntries         TimeEntry[]
+  expenses            Expense[]
+
+  @@index([accountId])
+}
+
+// ============================================================================
+// EVENT MODEL
+// ============================================================================
+
+model Event {
+  id                        String      @id @default(uuid()) @db.Uuid
+  accountId                 String      @db.Uuid
+  createdAt                 DateTime    @default(now())
+  updatedAt                 DateTime    @updatedAt
+  createdBy                 Staff       @relation("EventCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdById               String      @db.Uuid
+  updatedBy                 Staff       @relation("EventUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  updatedById               String      @db.Uuid
+
+  caseId                    String?     @db.Uuid
+  notLinkedToCase           Boolean     @default(false)
+
+  // Event Details
+  activityId                String      @db.Uuid
+  activity                  Activity    @relation(fields: [activityId], references: [id], onDelete: Restrict)
+
+  startTime                 DateTime
+  endTime                   DateTime
+  notes                     String?
+  clientAttendanceRequired  Boolean     @default(false)
+  clientUpdated             Boolean     @default(false)
+
+  // Location & Department (from contacts)
+  locationId                String?     @db.Uuid
+  location                  Contact?    @relation(name: "EventLocation", fields: [locationId], references: [id], onDelete: SetNull)
+  departmentId              String?     @db.Uuid
+  department                Contact?    @relation(name: "EventDepartment", fields: [departmentId], references: [id], onDelete: SetNull)
+
+  // Attendees
+  staffIds                  String[]    // JSON array of staff UUIDs
+  eventContacts             EventContact[]
+
+  // Files linked
+  documentIds               String[]    // JSON array of document UUIDs
+
+  // Relationships
+  account                   Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  case                      Case?       @relation(fields: [caseId], references: [id], onDelete: SetNull)
+  reminders                 Reminder[]
+
+  @@index([accountId])
+  @@index([caseId])
+  @@index([activityId])
+}
+
+// ============================================================================
+// EVENT CONTACT JUNCTION TABLE
+// ============================================================================
+
+model EventContact {
+  id                String    @id @default(uuid()) @db.Uuid
+  eventId           String    @db.Uuid
+  contactId         String    @db.Uuid
+
+  event             Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  contact           Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, contactId])
+  @@index([eventId])
+  @@index([contactId])
+}
+
+// ============================================================================
+// TIME ENTRY MODEL
+// ============================================================================
+
+model TimeEntry {
+  id          String      @id @default(uuid()) @db.Uuid
+  accountId   String      @db.Uuid
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  createdBy   Staff       @relation("TimeEntryCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdById String      @db.Uuid
+  updatedBy   Staff       @relation("TimeEntryUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  updatedById String      @db.Uuid
+
+  caseId              String      @db.Uuid
+  staffId             String      @db.Uuid
+  activityId          String      @db.Uuid
+
+  // Entry Details
+  billable            Boolean     @default(true)
+  description         String?
+  entryDate           DateTime
+
+  // Billing
+  rate                Decimal     @default(0) @db.Decimal(10, 2)
+  durationHours       Decimal     @db.Decimal(5, 2)
+  total               Decimal     @db.Decimal(10, 2)
+
+  // Invoicing
+  invoiceId           String?     @db.Uuid
+  status              BillableStatus @default(OPEN)
+
+  // Relationships
+  account             Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  case                Case        @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  staff               Staff       @relation(fields: [staffId], references: [id], onDelete: Restrict)
+  activity            Activity    @relation(fields: [activityId], references: [id], onDelete: Restrict)
+
+  @@index([accountId])
+  @@index([caseId])
+  @@index([staffId])
+  @@index([status])
+}
+
+// ============================================================================
+// EXPENSE MODEL
+// ============================================================================
+
+model Expense {
+  id          String      @id @default(uuid()) @db.Uuid
+  accountId   String      @db.Uuid
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  createdBy   Staff       @relation("ExpenseCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdById String      @db.Uuid
+  updatedBy   Staff       @relation("ExpenseUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  updatedById String      @db.Uuid
+
+  caseId              String      @db.Uuid
+  staffId             String      @db.Uuid
+  activityId          String      @db.Uuid
+
+  // Expense Details
+  billable            Boolean     @default(true)
+  description         String?
+  expenseDate         DateTime
+
+  // Amount Tracking
+  amount              Decimal     @default(0) @db.Decimal(10, 2)
+  quantity            Decimal     @default(1) @db.Decimal(10, 2)
+  reductions          Decimal?    @default(0) @db.Decimal(10, 2)
+  total               Decimal     @db.Decimal(10, 2)
+
+  // Receipt
+  receiptLink         String?
+
+  // Invoicing
+  invoiceId           String?     @db.Uuid
+  status              BillableStatus @default(OPEN)
+
+  // Relationships
+  account             Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  case                Case        @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  staff               Staff       @relation(fields: [staffId], references: [id], onDelete: Restrict)
+  activity            Activity    @relation(fields: [activityId], references: [id], onDelete: Restrict)
+
+  @@index([accountId])
+  @@index([caseId])
+  @@index([billable])
+  @@index([status])
+}
+
+// ============================================================================
+// TIMESHEET MODEL
+// ============================================================================
+
+model Timesheet {
+  id          String      @id @default(uuid()) @db.Uuid
+  accountId   String      @db.Uuid
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  createdBy   Staff       @relation("TimesheetCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdById String      @db.Uuid
+  updatedBy   Staff       @relation("TimesheetUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  updatedById String      @db.Uuid
+
+  staffId             String      @db.Uuid
+  timesheetDate       DateTime    @db.Date
+
+  // Times
+  clockInTime         DateTime
+  clockOutTime        DateTime
+  durationHours       Decimal     @db.Decimal(5, 2)
+
+  // Reporting
+  timesheetReportId   String?     @db.Uuid
+
+  // Relationships
+  account             Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  staff               Staff       @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, timesheetDate])
+  @@index([accountId])
+  @@index([staffId])
+}
+
+// ============================================================================
+// REMINDER MODEL
+// ============================================================================
+
+model Reminder {
+  id                      String            @id @default(uuid()) @db.Uuid
+  accountId               String            @db.Uuid
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+  createdBy               Staff             @relation("ReminderCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdById             String            @db.Uuid
+  updatedBy               Staff             @relation("ReminderUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  updatedById             String            @db.Uuid
+
+  // Polymorphic relation - can remind for events, leads, tasks, etc
+  recordId                String            @db.Uuid
+  recordType              String            // "Event", "Lead", "Task", "Requirement"
+
+  // Reminder Timing
+  howManyBeforeEvent      Int
+  duration                ReminderDuration
+  reminderDate            DateTime
+
+  // Relationships
+  account                 Account           @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  events                  Event[]
+  leads                   Lead[]
+
+  @@index([accountId])
+  @@index([recordId])
+}
+
+// ============================================================================
+// REQUIREMENT MODEL
+// ============================================================================
+
+model Requirement {
+  id          String      @id @default(uuid()) @db.Uuid
+  accountId   String      @db.Uuid
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  createdBy   Staff       @relation("RequirementCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdById String      @db.Uuid
+  updatedBy   Staff       @relation("RequirementUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  updatedById String      @db.Uuid
+
+  caseId              String      @db.Uuid
+
+  // Requirement Details
+  name                String
+  notes               String?
+  url                 String?
+  dueDate             DateTime?
+  completed           Boolean     @default(false)
+
+  // Relationships
+  account             Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  case                Case        @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@index([caseId])
+}
+
+// ============================================================================
+// TASK MODEL
+// ============================================================================
+
+model Task {
+  id          String      @id @default(uuid()) @db.Uuid
+  accountId   String      @db.Uuid
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  createdBy   Staff       @relation("TaskCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdById String      @db.Uuid
+  updatedBy   Staff       @relation("TaskUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  updatedById String      @db.Uuid
+
+  caseId              String?     @db.Uuid
+  notLinkedToCase     Boolean     @default(false)
+
+  // Task Details
+  taskName            String
+  priority            TaskPriority @default(NORMAL)
+  notes               String?
+
+  // Due Date
+  dueDate             DateTime?
+  noDueDate           Boolean     @default(false)
+
+  // Assignment
+  assignedStaffIds    String[]    // JSON array of staff UUIDs
+
+  // Files
+  documentIds         String[]    // JSON array of document UUIDs
+
+  // Status
+  status              TaskStatus  @default(OPEN)
+
+  // Relationships
+  account             Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@index([status])
+}
+
+// ============================================================================
+// CASE UPDATE MODEL
+// ============================================================================
+
+model Update {
+  id          String      @id @default(uuid()) @db.Uuid
+  accountId   String      @db.Uuid
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  createdBy   Staff       @relation("UpdateCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdById String      @db.Uuid
+  updatedBy   Staff       @relation("UpdateUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  updatedById String      @db.Uuid
+
+  caseId                    String      @db.Uuid
+  nextActivityId            String      @db.Uuid
+
+  // Update Details
+  todaysUpdate              String
+  clientAttendanceRequired  Boolean     @default(false)
+  clientUpdated             Boolean     @default(false)
+
+  // Relationships
+  account                   Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  case                      Case        @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@index([caseId])
+}
+
+// ============================================================================
+// ACTIVITY LOG MODEL
+// ============================================================================
+
+model ActivityLog {
+  id          String            @id @default(uuid()) @db.Uuid
+  accountId   String            @db.Uuid
+  staffId     String            @db.Uuid
+  createdAt   DateTime          @default(now())
+
+  caseId              String?     @db.Uuid
+
+  // Audit Details
+  action              ActivityAction
+  details             String      // JSON of what changed
+
+  // Relationships
+  account             Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  staff               Staff       @relation(fields: [staffId], references: [id], onDelete: Restrict)
+
+  @@index([accountId])
+  @@index([staffId])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// BANK ACCOUNT MODEL
+// ============================================================================
+
+model BankAccount {
+  id          String      @id @default(uuid()) @db.Uuid
+  accountId   String      @db.Uuid
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  createdBy   Staff       @relation("BankAccountCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdById String      @db.Uuid
+  updatedBy   Staff       @relation("BankAccountUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  updatedById String      @db.Uuid
+
+  // Bank Details
+  accountType             AccountType
+  bankName                String
+  routingNumber           String
+  accountNumber           String  // Should be encrypted
+  fractionalRoutingNumber String?
+
+  // Check Management
+  checkStartNumber        Int
+  startingBalance         Decimal @default(0) @db.Decimal(10, 2)
+
+  // Relationships
+  account                 Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+}
+
+// ============================================================================
+// TYPE OF ACTION MODEL
+// ============================================================================
+
+model TypeOfAction {
+  id          String      @id @default(uuid()) @db.Uuid
+  accountId   String      @db.Uuid
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  createdBy   Staff       @relation("TypeOfActionCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdById String      @db.Uuid
+  updatedBy   Staff       @relation("TypeOfActionUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  updatedById String      @db.Uuid
+
+  type                String
+
+  // Relationships
+  account             Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  causeOfActions      CauseOfAction[]
+
+  @@unique([accountId, type])
+  @@index([accountId])
+}
+
+// ============================================================================
+// CAUSE OF ACTION MODEL
+// ============================================================================
+
+model CauseOfAction {
+  id          String      @id @default(uuid()) @db.Uuid
+  accountId   String      @db.Uuid
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  createdBy   Staff       @relation("CauseOfActionCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdById String      @db.Uuid
+  updatedBy   Staff       @relation("CauseOfActionUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  updatedById String      @db.Uuid
+
+  typeOfActionId      String      @db.Uuid
+  causeOfActionName   String
+  penalty             String?
+  fine                String?
+
+  // Relationships
+  account             Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  typeOfAction        TypeOfAction  @relation(fields: [typeOfActionId], references: [id], onDelete: Restrict)
+  cases               Case[]
+
+  @@unique([accountId, causeOfActionName])
+  @@index([accountId])
+  @@index([typeOfActionId])
+}
