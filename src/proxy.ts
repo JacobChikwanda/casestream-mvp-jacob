@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createSupabaseServerRouteHandler } from "@/lib/supabase";
-import { prisma } from "@/lib/db";
 import { getSubdomainFromHost, getTenantUrl } from "./lib/helpers/tenant";
 
 // Exclude static assets, images, and API routes
@@ -33,23 +32,8 @@ const PROTECTED_ROUTES = [
   "/profile",
 ];
 
-async function getUserAccountSlug(userId: string): Promise<string | null> {
-  try {
-    const staff = await prisma.staff.findUnique({
-      where: { id: userId },
-      select: {
-        account: {
-          select: {
-            accountSlug: true,
-          },
-        },
-      },
-    });
-    return staff?.account?.accountSlug || null;
-  } catch (error) {
-    console.error("[middleware] Error fetching user account:", error);
-    return null;
-  }
+function getUserAccountSlug(user: any): string | null {
+  return user?.app_metadata?.accountSlug || null;
 }
 
 function isProtectedRoute(pathname: string): boolean {
@@ -80,11 +64,11 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(target);
   }
 
-  // Cache the user's account slug for this request to avoid repeated queries
+  // Cache the user's account slug for this request (now synchronous from metadata)
   let cachedUserAccountSlug: string | null | undefined = undefined;
-  async function getCachedUserAccountSlug() {
+  function getCachedUserAccountSlug() {
     if (cachedUserAccountSlug !== undefined) return cachedUserAccountSlug;
-    cachedUserAccountSlug = authUser ? await getUserAccountSlug(authUser.id) : null;
+    cachedUserAccountSlug = authUser ? getUserAccountSlug(authUser) : null;
     return cachedUserAccountSlug;
   }
 
@@ -94,7 +78,7 @@ export async function proxy(req: NextRequest) {
   if (!subdomain && host && !host.includes("localhost")) {
     // If authenticated, redirect to their subdomain
     if (authUser) {
-      const accountSlug = await getCachedUserAccountSlug();
+      const accountSlug = getCachedUserAccountSlug();
       if (accountSlug) {
         return redirectOrRewrite(getTenantUrl(accountSlug, "/dashboard"));
       }
@@ -109,7 +93,7 @@ export async function proxy(req: NextRequest) {
   if (isPublicRoute(pathname)) {
     // If user is already logged in, redirect to their dashboard
     if (authUser) {
-      const accountSlug = await getCachedUserAccountSlug();
+      const accountSlug = getCachedUserAccountSlug();
       if (accountSlug) {
         return redirectOrRewrite(getTenantUrl(accountSlug, "/dashboard"));
       }
@@ -132,7 +116,7 @@ export async function proxy(req: NextRequest) {
 
     // If subdomain exists, validate and rewrite
     if (subdomain && !pathname.startsWith("/tenant/")) {
-      const userAccountSlug = await getCachedUserAccountSlug();
+      const userAccountSlug = getCachedUserAccountSlug();
 
       // Validate that the subdomain matches the user's account
       if (userAccountSlug !== subdomain) {
@@ -154,7 +138,7 @@ export async function proxy(req: NextRequest) {
 
     // No subdomain provided for protected route
     if (!subdomain) {
-      const userAccountSlug = await getCachedUserAccountSlug();
+      const userAccountSlug = getCachedUserAccountSlug();
       if (userAccountSlug) {
         // In dev, getTenantUrl returns a path; in prod it's a full domain URL
         const target = getTenantUrl(userAccountSlug, pathname);
@@ -188,7 +172,7 @@ export async function proxy(req: NextRequest) {
     const tenantMatch = pathname.match(/^\/tenant\/([^/]+)/);
     if (tenantMatch) {
       const requestedSlug = tenantMatch[1];
-      const userAccountSlug = await getCachedUserAccountSlug();
+      const userAccountSlug = getCachedUserAccountSlug();
 
       // Verify user has access to this tenant
       if (userAccountSlug !== requestedSlug) {

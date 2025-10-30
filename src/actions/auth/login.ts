@@ -103,6 +103,23 @@ export async function loginAction(
 
     const accountSlug = staffRecord.account.accountSlug;
 
+    // Reuse the existing Supabase client (which uses service role) for admin update
+    // Update app_metadata with accountSlug (merge with existing to avoid overwriting other fields)
+    const currentMetadata = authData.user.app_metadata || {};
+    const newMetadata = { ...currentMetadata, accountSlug };
+
+    const { error: updateError } = await supabase.auth.admin.updateUserById(
+      authData.user.id,
+      { app_metadata: newMetadata }
+    );
+
+    if (updateError) {
+      console.error("[login] Error updating app_metadata:", updateError.message);
+      // Proceed with login anyway, as metadata update is not critical for this session
+    } else {
+      console.log("[login] Updated user app_metadata with accountSlug:", accountSlug);
+    }
+
     console.log(
       "[login] Login successful for:",
       staffRecord.name,
