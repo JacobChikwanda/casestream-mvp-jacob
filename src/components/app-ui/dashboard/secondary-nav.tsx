@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
+import { SecondaryNavItem } from "./secondary-nav-item";
 import { navItems } from "./sidebar";
 
 export function SecondaryNav() {
@@ -29,18 +28,27 @@ export function SecondaryNav() {
         <span className="mr-3 text-sm font-medium text-muted-foreground">
           {currentSection.title}:
         </span>
-        {currentSection.subItems.map((subItem) => (
-          <Link
-            key={subItem.href}
-            href={subItem.href}
-            className={cn(
-              "whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-              "text-foreground hover:bg-accent hover:text-accent-foreground"
-            )}
-          >
-            {subItem.title}
-          </Link>
-        ))}
+
+        <SecondaryNavItem
+          triggerVariant="ghost"
+          title="Staff directory"
+          links={[
+            {
+              name: "View directory",
+              href: `/tenant/${"slug"}/dashboard/staff/directory`,
+            },
+          ]}
+        />
+        <SecondaryNavItem
+          triggerVariant="ghost"
+          title="Staff directory"
+          links={[
+            {
+              name: "View directory",
+              href: `/tenant/${"slug"}/dashboard/staff/directory`,
+            },
+          ]}
+        />
       </div>
     </div>
   );
