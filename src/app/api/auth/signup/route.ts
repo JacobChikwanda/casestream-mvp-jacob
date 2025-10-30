@@ -1,55 +1,68 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/db"
-import { createSupabaseServerRouteHandler } from "@/lib/supabase"
+import { type NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
+import { createSupabaseServerRouteHandler } from "@/lib/supabase";
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { account, staffOwner, acceptTerms } = body
+    const body = await request.json();
+    const { account, staffOwner, acceptTerms } = body;
 
     if (!acceptTerms) {
-      return NextResponse.json({ message: "You must accept the terms and conditions" }, { status: 400 })
+      return NextResponse.json({
+        message: "You must accept the terms and conditions",
+      }, { status: 400 });
     }
 
     if (!account?.firmName || !account?.email || !account?.accountSlug) {
-      return NextResponse.json({ message: "Missing required account fields" }, { status: 400 })
+      return NextResponse.json({ message: "Missing required account fields" }, {
+        status: 400,
+      });
     }
 
     if (!staffOwner?.name || !staffOwner?.workEmail || !staffOwner?.password) {
-      return NextResponse.json({ message: "Missing required staff owner fields" }, { status: 400 })
+      return NextResponse.json({
+        message: "Missing required staff owner fields",
+      }, { status: 400 });
     }
 
     if (staffOwner.password.length < 8) {
-      return NextResponse.json({ message: "Password must be at least 8 characters" }, { status: 400 })
+      return NextResponse.json({
+        message: "Password must be at least 8 characters",
+      }, { status: 400 });
     }
 
-    const supabase = await createSupabaseServerRouteHandler()
+    const supabase = await createSupabaseServerRouteHandler();
 
     const existingAccount = await prisma.account.findUnique({
       where: { accountSlug: account.accountSlug },
       select: { id: true },
-    })
+    });
 
     if (existingAccount) {
-      return NextResponse.json({ message: "Account slug already exists" }, { status: 400 })
+      return NextResponse.json({ message: "Account slug already exists" }, {
+        status: 400,
+      });
     }
 
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email: staffOwner.workEmail,
-      password: staffOwner.password,
-      email_confirm: true,
-      user_metadata: {
-        name: staffOwner.name,
-        phone: staffOwner.phone,
-      },
-    })
+    const { data: authData, error: authError } = await supabase.auth.admin
+      .createUser({
+        email: staffOwner.workEmail,
+        password: staffOwner.password,
+        email_confirm: true,
+        user_metadata: {
+          name: staffOwner.name,
+          phone: staffOwner.phone,
+        },
+      });
 
     if (authError || !authData.user) {
-      console.error("[signup] Auth error:", authError)
-      return NextResponse.json({ message: authError?.message || "Failed to create user" }, { status: 400 })
+      console.error("[signup] Auth error:", authError);
+      return NextResponse.json({
+        message: authError?.message || "Failed to create user",
+      }, { status: 400 });
     }
 
-    let createdAccount: { id: string; accountSlug: string } | null = null
+    let createdAccount: { id: string; accountSlug: string } | null = null;
 
     try {
       createdAccount = await prisma.account.create({
@@ -69,6 +82,7 @@ export async function POST(request: NextRequest) {
           },
           staff: {
             create: {
+              id: authData.user?.id,
               name: staffOwner.name,
               email: staffOwner.email || "",
               phone: staffOwner.phone || "",
@@ -103,10 +117,10 @@ export async function POST(request: NextRequest) {
           id: true,
           accountSlug: true,
         },
-      })
+      });
 
       if (!createdAccount) {
-        throw new Error("Failed to create account")
+        throw new Error("Failed to create account");
       }
 
       return NextResponse.json(
@@ -116,26 +130,32 @@ export async function POST(request: NextRequest) {
           redirectTo: `/${createdAccount.accountSlug}/dashboard`,
         },
         { status: 201 },
-      )
+      );
     } catch (error) {
-      console.error("[signup] Prisma error, rolling back:", error)
+      console.error("[signup] Prisma error, rolling back:", error);
 
       if (createdAccount) {
         await prisma.account.delete({
           where: { id: createdAccount.id },
-        })
+        });
       }
 
       // Delete Supabase auth user
-      await supabase.auth.admin.deleteUser(authData.user.id)
+      await supabase.auth.admin.deleteUser(authData.user.id);
 
       return NextResponse.json(
-        { message: error instanceof Error ? error.message : "Failed to create account" },
+        {
+          message: error instanceof Error
+            ? error.message
+            : "Failed to create account",
+        },
         { status: 500 },
-      )
+      );
     }
   } catch (error) {
-    console.error("[signup] Request error:", error)
-    return NextResponse.json({ message: "Internal server error" }, { status: 500 })
+    console.error("[signup] Request error:", error);
+    return NextResponse.json({ message: "Internal server error" }, {
+      status: 500,
+    });
   }
 }
