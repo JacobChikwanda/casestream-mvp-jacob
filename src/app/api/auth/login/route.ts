@@ -52,7 +52,6 @@ export async function POST(request: NextRequest) {
 
     // Determine redirect based on role
     const pathname = "/dashboard"
-
     const redirectTo = getTenantUrl(accountSlug, pathname)
 
     return NextResponse.json(

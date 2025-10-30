@@ -2,6 +2,7 @@
 
 import { createSupabaseServerRouteHandler } from "@/lib/supabase";
 import { prisma } from "@/lib/db";
+import { getTenantUrl } from "@/lib/helpers/tenant";
 
 export interface LoginResult {
   success: boolean;
@@ -113,11 +114,7 @@ export async function loginAction(
     const pathname = "/dashboard";
 
     // Build tenant URL
-    const isDev = process.env.NODE_ENV === "development";
-    const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN || "casestream.com";
-    const redirectTo = isDev
-      ? `http://${accountSlug}.localhost:3000${pathname}`
-      : `https://${accountSlug}.${baseDomain}${pathname}`;
+    const redirectTo = getTenantUrl(accountSlug, pathname);
 
     return {
       success: true,

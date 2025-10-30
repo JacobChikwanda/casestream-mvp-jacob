@@ -71,15 +71,32 @@ export async function proxy(req: NextRequest) {
     data: { user: authUser },
   } = await supabase.auth.getUser();
 
+  function redirectOrRewrite(target: string) {
+    if (target.startsWith("/")) {
+      const url = req.nextUrl.clone();
+      url.pathname = target;
+      return NextResponse.rewrite(url);
+    }
+    return NextResponse.redirect(target);
+  }
+
+  // Cache the user's account slug for this request to avoid repeated queries
+  let cachedUserAccountSlug: string | null | undefined = undefined;
+  async function getCachedUserAccountSlug() {
+    if (cachedUserAccountSlug !== undefined) return cachedUserAccountSlug;
+    cachedUserAccountSlug = authUser ? await getUserAccountSlug(authUser.id) : null;
+    return cachedUserAccountSlug;
+  }
+
   // ============================================================================
   // ROOT DOMAIN HANDLING (nshito.com without subdomain)
   // ============================================================================
   if (!subdomain && host && !host.includes("localhost")) {
     // If authenticated, redirect to their subdomain
     if (authUser) {
-      const accountSlug = await getUserAccountSlug(authUser.id);
+      const accountSlug = await getCachedUserAccountSlug();
       if (accountSlug) {
-        return NextResponse.redirect(getTenantUrl(accountSlug, "/dashboard"));
+        return redirectOrRewrite(getTenantUrl(accountSlug, "/dashboard"));
       }
     }
     // If not authenticated, redirect to login
@@ -92,9 +109,9 @@ export async function proxy(req: NextRequest) {
   if (isPublicRoute(pathname)) {
     // If user is already logged in, redirect to their dashboard
     if (authUser) {
-      const accountSlug = await getUserAccountSlug(authUser.id);
+      const accountSlug = await getCachedUserAccountSlug();
       if (accountSlug) {
-        return NextResponse.redirect(getTenantUrl(accountSlug, "/dashboard"));
+        return redirectOrRewrite(getTenantUrl(accountSlug, "/dashboard"));
       }
     }
     return NextResponse.next();
@@ -115,7 +132,7 @@ export async function proxy(req: NextRequest) {
 
     // If subdomain exists, validate and rewrite
     if (subdomain && !pathname.startsWith("/tenant/")) {
-      const userAccountSlug = await getUserAccountSlug(authUser.id);
+      const userAccountSlug = await getCachedUserAccountSlug();
 
       // Validate that the subdomain matches the user's account
       if (userAccountSlug !== subdomain) {
@@ -125,10 +142,8 @@ export async function proxy(req: NextRequest) {
           "requested subdomain:",
           subdomain,
         );
-        // Redirect to user's correct subdomain
-        return NextResponse.redirect(
-          getTenantUrl(userAccountSlug || "", pathname),
-        );
+        // Redirect/rewrite to user's correct tenant
+        return redirectOrRewrite(getTenantUrl(userAccountSlug || "", pathname));
       }
 
       // Valid subdomain, rewrite to tenant path
@@ -137,12 +152,18 @@ export async function proxy(req: NextRequest) {
       return NextResponse.rewrite(url);
     }
 
-    // No subdomain provided for protected route - redirect to user's subdomain
+    // No subdomain provided for protected route
     if (!subdomain) {
-      const userAccountSlug = await getUserAccountSlug(authUser.id);
+      const userAccountSlug = await getCachedUserAccountSlug();
       if (userAccountSlug) {
-        console.info("[middleware] Redirecting to subdomain:", userAccountSlug);
-        return NextResponse.redirect(getTenantUrl(userAccountSlug, pathname));
+        // In dev, getTenantUrl returns a path; in prod it's a full domain URL
+        const target = getTenantUrl(userAccountSlug, pathname);
+        if (target.startsWith("/")) {
+          const url = req.nextUrl.clone();
+          url.pathname = target;
+          return NextResponse.rewrite(url);
+        }
+        return NextResponse.redirect(target);
       } else {
         console.error("[middleware] User has no associated account");
         return NextResponse.redirect(new URL("/login", req.url));
@@ -167,7 +188,7 @@ export async function proxy(req: NextRequest) {
     const tenantMatch = pathname.match(/^\/tenant\/([^/]+)/);
     if (tenantMatch) {
       const requestedSlug = tenantMatch[1];
-      const userAccountSlug = await getUserAccountSlug(authUser.id);
+      const userAccountSlug = await getCachedUserAccountSlug();
 
       // Verify user has access to this tenant
       if (userAccountSlug !== requestedSlug) {
