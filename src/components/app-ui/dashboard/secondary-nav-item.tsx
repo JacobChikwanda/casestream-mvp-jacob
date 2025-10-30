@@ -5,9 +5,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import Link from "next/link";
 
-interface NavLink {
-  name: string;
+export interface NavLink {
+  title: string;
   href: string;
 }
 
@@ -41,10 +42,10 @@ export function SecondaryNavItem({
       </DropdownMenuTrigger>
       <DropdownMenuContent align={align} className="w-56">
         {links.map((link) => (
-          <DropdownMenuItem key={link.name} asChild>
-            <a href={link.href} className="w-full">
-              {link.name}
-            </a>
+          <DropdownMenuItem key={link.title} asChild>
+            <Link href={link.href} className="w-full">
+              {link.title}
+            </Link>
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

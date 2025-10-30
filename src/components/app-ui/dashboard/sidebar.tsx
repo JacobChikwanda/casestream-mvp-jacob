@@ -35,13 +35,13 @@ export const navItems: NavItem[] = [
   {
     title: "Case Management",
     icon: Briefcase,
-    href: "/cases",
+    href: "/dashboard/cases",
     subItems: [
-      { title: "Active Cases", href: "/cases/active" },
-      { title: "Closed Cases", href: "/cases/closed" },
-      { title: "Case Calendar", href: "/cases/calendar" },
-      { title: "Case Documents", href: "/cases/documents" },
-      { title: "Case Reports", href: "/cases/reports" },
+      { title: "Active Cases", href: "/dashboard/cases/active" },
+      { title: "Closed Cases", href: "/dashboard/cases/closed" },
+      { title: "Case Calendar", href: "/dashboard/cases/calendar" },
+      { title: "Case Documents", href: "/dashboard/cases/documents" },
+      { title: "Case Reports", href: "/dashboard/cases/reports" },
     ],
   },
   {
@@ -154,7 +154,7 @@ export function Sidebar({
               <Scale className="h-7 w-7 text-sidebar-primary" />
               <div className="flex flex-col">
                 <span className="text-base font-bold text-sidebar-foreground">
-                  LegalPro
+                  Casestream
                 </span>
                 <span className="text-[10px] text-sidebar-muted-foreground">
                   Management System
