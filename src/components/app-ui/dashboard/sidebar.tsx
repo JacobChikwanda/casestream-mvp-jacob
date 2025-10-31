@@ -17,6 +17,7 @@ import {
   Scale,
   LayoutDashboard,
 } from "lucide-react";
+import Image from "next/image";
 
 interface NavItem {
   title: string;
@@ -151,14 +152,13 @@ export function Sidebar({
         <div className="flex h-16 items-center justify-center gap-3 border-b border-sidebar-border px-4">
           {isOpen ? (
             <>
-              <Scale className="h-7 w-7 text-sidebar-primary" />
-              <div className="flex flex-col">
-                <span className="text-base font-bold text-sidebar-foreground">
-                  Casestream
-                </span>
-                <span className="text-[10px] text-sidebar-muted-foreground">
-                  Management System
-                </span>
+              <div className="relative w-28 h-10">
+                <Image
+                  fill
+                  src="/cs-logo-long.png"
+                  className="w-40 h-20"
+                  alt="Company Log"
+                />
               </div>
             </>
           ) : (
