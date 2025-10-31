@@ -95,13 +95,13 @@ export const navItems: NavItem[] = [
   {
     title: "Admin",
     icon: Settings,
-    href: "/admin",
+    href: "/dashboard/admin",
     subItems: [
-      { title: "System Settings", href: "/admin/settings" },
-      { title: "User Management", href: "/admin/users" },
-      { title: "Firm Profile", href: "/admin/profile" },
-      { title: "Integrations", href: "/admin/integrations" },
-      { title: "Audit Logs", href: "/admin/logs" },
+      { title: "System Settings", href: "/dashboard/admin/settings" },
+      { title: "User Management", href: "/dashboard/admin/users" },
+      { title: "Firm Profile", href: "/dashboard/admin/profile" },
+      { title: "Integrations", href: "/dashboard/admin/integrations" },
+      { title: "Audit Logs", href: "/dashboard/admin/logs" },
     ],
   },
 
