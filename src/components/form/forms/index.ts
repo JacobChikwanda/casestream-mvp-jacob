@@ -1,1 +1,1 @@
-import StaffForm from "./staff.form";
+export { StaffForm } from "./staff.form";
