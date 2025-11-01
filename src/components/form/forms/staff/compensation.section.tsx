@@ -1,6 +1,6 @@
+"use client";
+
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -9,15 +9,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { useStaffForm } from "./useStaffForm";
 
 export function CompensationSection() {
-  const {
-    register,
-    formState: { errors },
-    setValue,
-    watch,
-  } = useStaffForm();
+  const { control, watch } = useStaffForm();
 
   const enableOvertime = watch("enableOvertime");
   const enableAutoBreakDeduction = watch("enableAutoBreakDeduction");
@@ -31,226 +34,312 @@ export function CompensationSection() {
       <CardContent className="space-y-6">
         {/* Core fields */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <Label htmlFor="defaultCaseRate">Default Case Rate ($) *</Label>
-            <Input
-              id="defaultCaseRate"
-              type="number"
-              step="0.01"
-              {...register("defaultCaseRate")}
-            />
-            {errors.defaultCaseRate && (
-              <p className="text-sm text-destructive">
-                {errors.defaultCaseRate.message}
-              </p>
+          <FormField
+            control={control}
+            name="defaultCaseRate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Default Case Rate ($) *</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )}
-          </div>
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="payType">Pay Type *</Label>
-            <Select
-              onValueChange={(v) => setValue("payType", v as any)}
-              defaultValue="HOURLY"
-            >
-              <SelectTrigger id="payType">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="SALARY">Salary</SelectItem>
-                <SelectItem value="HOURLY">Hourly</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="payRate">Pay Rate ($) *</Label>
-            <Input
-              id="payRate"
-              type="number"
-              step="0.01"
-              {...register("payRate")}
-            />
-            {errors.payRate && (
-              <p className="text-sm text-destructive">
-                {errors.payRate.message}
-              </p>
+          <FormField
+            control={control}
+            name="payType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Pay Type *</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="SALARY">Salary</SelectItem>
+                    <SelectItem value="HOURLY">Hourly</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
             )}
-          </div>
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="mileageReimbursement">
-              Mileage Reimbursement ($/mile) *
-            </Label>
-            <Input
-              id="mileageReimbursement"
-              type="number"
-              step="0.01"
-              {...register("mileageReimbursement")}
-            />
-            {errors.mileageReimbursement && (
-              <p className="text-sm text-destructive">
-                {errors.mileageReimbursement.message}
-              </p>
+          <FormField
+            control={control}
+            name="payRate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Pay Rate ($) *</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )}
-          </div>
+          />
+
+          <FormField
+            control={control}
+            name="mileageReimbursement"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Mileage Reimbursement ($/mile) *</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
 
         {/* Overtime */}
         <div className="space-y-4 pt-4 border-t">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="enableOvertime"
-              checked={enableOvertime}
-              onCheckedChange={(c) => setValue("enableOvertime", c as boolean)}
-            />
-            <Label
-              htmlFor="enableOvertime"
-              className="cursor-pointer font-semibold"
-            >
-              Enable Overtime
-            </Label>
-          </div>
+          <FormField
+            control={control}
+            name="enableOvertime"
+            render={({ field }) => (
+              <FormItem className="flex items-center space-x-2">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <FormLabel className="cursor-pointer font-semibold">
+                  Enable Overtime
+                </FormLabel>
+              </FormItem>
+            )}
+          />
 
           {enableOvertime && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-6">
-              <div className="space-y-2">
-                <Label htmlFor="overtimeRate">
-                  Overtime Rate (multiplier) *
-                </Label>
-                <Input
-                  id="overtimeRate"
-                  type="number"
-                  step="0.01"
-                  {...register("overtimeRate")}
-                />
-                {errors.overtimeRate && (
-                  <p className="text-sm text-destructive">
-                    {errors.overtimeRate.message}
-                  </p>
+              <FormField
+                control={control}
+                name="overtimeRate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Overtime Rate (multiplier) *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="weeklyBaseHours">Weekly Base Hours *</Label>
-                <Input
-                  id="weeklyBaseHours"
-                  type="number"
-                  step="0.5"
-                  {...register("weeklyBaseHours")}
-                />
-                {errors.weeklyBaseHours && (
-                  <p className="text-sm text-destructive">
-                    {errors.weeklyBaseHours.message}
-                  </p>
+              />
+
+              <FormField
+                control={control}
+                name="weeklyBaseHours"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Weekly Base Hours *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.5"
+                        placeholder="40"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </div>
+              />
             </div>
           )}
         </div>
 
         {/* Auto Break */}
         <div className="space-y-4 pt-4 border-t">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="enableAutoBreakDeduction"
-              checked={enableAutoBreakDeduction}
-              onCheckedChange={(c) =>
-                setValue("enableAutoBreakDeduction", c as boolean)
-              }
-            />
-            <Label
-              htmlFor="enableAutoBreakDeduction"
-              className="cursor-pointer font-semibold"
-            >
-              Enable Auto Break Deduction
-            </Label>
-          </div>
+          <FormField
+            control={control}
+            name="enableAutoBreakDeduction"
+            render={({ field }) => (
+              <FormItem className="flex items-center space-x-2">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <FormLabel className="cursor-pointer font-semibold">
+                  Enable Auto Break Deduction
+                </FormLabel>
+              </FormItem>
+            )}
+          />
 
           {enableAutoBreakDeduction && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-6">
-              <div className="space-y-2">
-                <Label htmlFor="breaktimeBaseHours">
-                  Break Time Base Hours *
-                </Label>
-                <Input
-                  id="breaktimeBaseHours"
-                  type="number"
-                  step="0.25"
-                  {...register("breaktimeBaseHours")}
-                />
-                {errors.breaktimeBaseHours && (
-                  <p className="text-sm text-destructive">
-                    {errors.breaktimeBaseHours.message}
-                  </p>
+              <FormField
+                control={control}
+                name="breaktimeBaseHours"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Break Time Base Hours *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.25"
+                        placeholder="0"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="breaktimeRate">Break Time Rate ($) *</Label>
-                <Input
-                  id="breaktimeRate"
-                  type="number"
-                  step="0.01"
-                  {...register("breaktimeRate")}
-                />
-                {errors.breaktimeRate && (
-                  <p className="text-sm text-destructive">
-                    {errors.breaktimeRate.message}
-                  </p>
+              />
+
+              <FormField
+                control={control}
+                name="breaktimeRate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Break Time Rate ($) *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </div>
+              />
             </div>
           )}
         </div>
 
         {/* Performance Incentives */}
         <div className="space-y-4 pt-4 border-t">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="enablePerformanceIncentives"
-              checked={enablePerformanceIncentives}
-              onCheckedChange={(c) =>
-                setValue("enablePerformanceIncentives", c as boolean)
-              }
-            />
-            <Label
-              htmlFor="enablePerformanceIncentives"
-              className="cursor-pointer font-semibold"
-            >
-              Enable Performance Incentives
-            </Label>
-          </div>
+          <FormField
+            control={control}
+            name="enablePerformanceIncentives"
+            render={({ field }) => (
+              <FormItem className="flex items-center space-x-2">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <FormLabel className="cursor-pointer font-semibold">
+                  Enable Performance Incentives
+                </FormLabel>
+              </FormItem>
+            )}
+          />
 
           {enablePerformanceIncentives && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-6">
-              {[
-                {
-                  id: "intakeStaffIncentive",
-                  label: "Intake Staff Incentive ($)",
-                },
-                {
-                  id: "intakeOverrideIncentive",
-                  label: "Intake Override Incentive ($)",
-                },
-                {
-                  id: "managerOverrideIncentive",
-                  label: "Manager Override Incentive ($)",
-                },
-                { id: "referralIncentive", label: "Referral Incentive ($)" },
-              ].map(({ id, label }) => (
-                <div key={id} className="space-y-2">
-                  <Label htmlFor={id}>{label} *</Label>
-                  <Input
-                    id={id}
-                    type="number"
-                    step="0.01"
-                    {...register(id as any)}
-                  />
-                  {errors[id as keyof typeof errors] && (
-                    <p className="text-sm text-destructive">
-                      {errors[id as keyof typeof errors]?.message}
-                    </p>
-                  )}
-                </div>
-              ))}
+              <FormField
+                control={control}
+                name="intakeStaffIncentive"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Intake Staff Incentive ($) *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={control}
+                name="intakeOverrideIncentive"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Intake Override Incentive ($) *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={control}
+                name="managerOverrideIncentive"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Manager Override Incentive ($) *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={control}
+                name="referralIncentive"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Referral Incentive ($) *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
           )}
         </div>

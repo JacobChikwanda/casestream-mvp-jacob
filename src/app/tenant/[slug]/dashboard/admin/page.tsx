@@ -1,4 +1,4 @@
-import { StaffForm } from "@/components/form/forms";
+import { getForm } from "@/components/form/helpers";
 
 export default function Page() {
   return (
@@ -12,7 +12,7 @@ export default function Page() {
             Add or edit staff member information
           </p>
         </div>
-        <StaffForm />
+        {getForm("staff", "create")}
       </div>
     </div>
   );

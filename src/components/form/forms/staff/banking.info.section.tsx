@@ -1,13 +1,18 @@
+"use client";
+
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { useStaffForm } from "./useStaffForm";
 
 export function BankingInfoSection() {
-  const {
-    register,
-    formState: { errors },
-  } = useStaffForm();
+  const { control } = useStaffForm();
 
   return (
     <Card>
@@ -17,48 +22,52 @@ export function BankingInfoSection() {
 
       <CardContent className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Bank Name */}
-          <div className="space-y-2">
-            <Label htmlFor="bankName">Bank Name *</Label>
-            <Input id="bankName" {...register("bankName")} />
-            {errors.bankName && (
-              <p className="text-sm text-destructive">
-                {errors.bankName.message}
-              </p>
+          <FormField
+            control={control}
+            name="bankName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Bank Name *</FormLabel>
+                <FormControl>
+                  <Input placeholder="Chase Bank" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )}
-          </div>
+          />
 
-          {/* Routing Number */}
-          <div className="space-y-2">
-            <Label htmlFor="bankRoutingNumber">Routing Number *</Label>
-            <Input
-              id="bankRoutingNumber"
-              placeholder="e.g. 021000021"
-              {...register("bankRoutingNumber")}
-            />
-            {errors.bankRoutingNumber && (
-              <p className="text-sm text-destructive">
-                {errors.bankRoutingNumber.message}
-              </p>
+          <FormField
+            control={control}
+            name="bankRoutingNumber"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Routing Number *</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g. 021000021" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )}
-          </div>
+          />
 
-          {/* Account Number (masked) */}
-          <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="bankAccountNumber">Account Number *</Label>
-            <Input
-              id="bankAccountNumber"
-              type="password" // hides the number while typing
-              placeholder="••••••••"
-              autoComplete="off"
-              {...register("bankAccountNumber")}
-            />
-            {errors.bankAccountNumber && (
-              <p className="text-sm text-destructive">
-                {errors.bankAccountNumber.message}
-              </p>
+          <FormField
+            control={control}
+            name="bankAccountNumber"
+            render={({ field }) => (
+              <FormItem className="md:col-span-2">
+                <FormLabel>Account Number *</FormLabel>
+                <FormControl>
+                  <Input
+                    type="password"
+                    placeholder="••••••••"
+                    autoComplete="off"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )}
-          </div>
+          />
         </div>
       </CardContent>
     </Card>

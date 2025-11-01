@@ -1,6 +1,6 @@
+"use client";
+
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -9,16 +9,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { useStaffForm } from "./useStaffForm";
 
 export function EmploymentInfoSection() {
-  const {
-    register,
-    formState: { errors },
-    setValue,
-    watch,
-  } = useStaffForm();
-
+  const { control, watch } = useStaffForm();
   const applicationAdmin = watch("applicationAdmin");
 
   return (
@@ -28,76 +30,121 @@ export function EmploymentInfoSection() {
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <Label htmlFor="hireDate">Hire Date *</Label>
-            <Input id="hireDate" type="date" {...register("hireDate")} />
-            {errors.hireDate && (
-              <p className="text-sm text-destructive">
-                {errors.hireDate.message}
-              </p>
+          <FormField
+            control={control}
+            name="hireDate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Hire Date *</FormLabel>
+                <FormControl>
+                  <Input type="date" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )}
-          </div>
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="leaveDate">Leave Date</Label>
-            <Input id="leaveDate" type="date" {...register("leaveDate")} />
-          </div>
+          <FormField
+            control={control}
+            name="leaveDate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Leave Date</FormLabel>
+                <FormControl>
+                  <Input type="date" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="employmentStatus">Employment Status *</Label>
-            <Select
-              onValueChange={(v) => setValue("employmentStatus", v as any)}
-              defaultValue="ACTIVE"
-            >
-              <SelectTrigger id="employmentStatus">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ACTIVE">Active</SelectItem>
-                <SelectItem value="INACTIVE">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <FormField
+            control={control}
+            name="employmentStatus"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Employment Status *</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="ACTIVE">Active</SelectItem>
+                    <SelectItem value="INACTIVE">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="staffGroup">Staff Group *</Label>
-            <Select
-              onValueChange={(v) => setValue("staffGroup", v as any)}
-              defaultValue="STAFF"
-            >
-              <SelectTrigger id="staffGroup">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ATTORNEY">Attorney</SelectItem>
-                <SelectItem value="LAW_CLERK">Law Clerk</SelectItem>
-                <SelectItem value="STAFF">Staff</SelectItem>
-                <SelectItem value="FIRM_MANAGER">Firm Manager</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <FormField
+            control={control}
+            name="staffGroup"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Staff Group *</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="ATTORNEY">Attorney</SelectItem>
+                    <SelectItem value="LAW_CLERK">Law Clerk</SelectItem>
+                    <SelectItem value="STAFF">Staff</SelectItem>
+                    <SelectItem value="FIRM_MANAGER">Firm Manager</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="reportingToId">Reports To (Staff ID)</Label>
-            <Input
-              id="reportingToId"
-              {...register("reportingToId")}
-              placeholder="Enter staff ID"
-            />
-          </div>
+          <FormField
+            control={control}
+            name="reportingToId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Reports To (Staff ID)</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Enter staff ID"
+                    {...field}
+                    value={field.value || ""}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-          <div className="flex items-center space-x-2 pt-8">
-            <Checkbox
-              id="applicationAdmin"
-              checked={applicationAdmin}
-              onCheckedChange={(c) =>
-                setValue("applicationAdmin", c as boolean)
-              }
-            />
-            <Label htmlFor="applicationAdmin" className="cursor-pointer">
-              Application Admin
-            </Label>
-          </div>
+          <FormField
+            control={control}
+            name="applicationAdmin"
+            render={({ field }) => (
+              <FormItem className="flex items-center space-x-2 pt-8">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <FormLabel className="cursor-pointer">
+                  Application Admin
+                </FormLabel>
+              </FormItem>
+            )}
+          />
         </div>
       </CardContent>
     </Card>

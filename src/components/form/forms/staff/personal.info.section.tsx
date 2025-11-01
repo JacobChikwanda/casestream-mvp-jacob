@@ -1,5 +1,6 @@
+"use client";
+
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -8,15 +9,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { useStaffForm } from "./useStaffForm";
-import { StaffFormData } from "@/lib/validations/staff";
 
 export function PersonalInfoSection() {
-  const {
-    register,
-    formState: { errors },
-    setValue,
-  } = useStaffForm();
+  const { control } = useStaffForm();
 
   return (
     <Card>
@@ -26,147 +29,271 @@ export function PersonalInfoSection() {
       <CardContent className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Name */}
-          <div className="space-y-2">
-            <Label htmlFor="name">Full Name *</Label>
-            <Input id="name" {...register("name")} />
-            {errors.name && (
-              <p className="text-sm text-destructive">{errors.name.message}</p>
+          <FormField
+            control={control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Full Name *</FormLabel>
+                <FormControl>
+                  <Input placeholder="John Doe" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )}
-          </div>
+          />
 
           {/* DOB */}
-          <div className="space-y-2">
-            <Label htmlFor="dob">Date of Birth *</Label>
-            <Input id="dob" type="date" {...register("dob")} />
-            {errors.dob && (
-              <p className="text-sm text-destructive">{errors.dob.message}</p>
+          <FormField
+            control={control}
+            name="dob"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Date of Birth *</FormLabel>
+                <FormControl>
+                  <Input type="date" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )}
-          </div>
+          />
 
           {/* Email */}
-          <div className="space-y-2">
-            <Label htmlFor="email">Personal Email</Label>
-            <Input id="email" type="email" {...register("email")} />
-            {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
+          <FormField
+            control={control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Personal Email</FormLabel>
+                <FormControl>
+                  <Input
+                    type="email"
+                    placeholder="john@example.com"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )}
-          </div>
+          />
 
           {/* Phone */}
-          <div className="space-y-2">
-            <Label htmlFor="phone">Personal Phone *</Label>
-            <Input id="phone" type="tel" {...register("phone")} />
-            {errors.phone && (
-              <p className="text-sm text-destructive">{errors.phone.message}</p>
+          <FormField
+            control={control}
+            name="phone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Personal Phone *</FormLabel>
+                <FormControl>
+                  <Input type="tel" placeholder="(555) 000-0000" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )}
-          </div>
+          />
 
           {/* Work Email */}
-          <div className="space-y-2">
-            <Label htmlFor="workEmail">Work Email *</Label>
-            <Input id="workEmail" type="email" {...register("workEmail")} />
-            {errors.workEmail && (
-              <p className="text-sm text-destructive">
-                {errors.workEmail.message}
-              </p>
+          <FormField
+            control={control}
+            name="workEmail"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Work Email *</FormLabel>
+                <FormControl>
+                  <Input
+                    type="email"
+                    placeholder="john.work@example.com"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )}
-          </div>
+          />
 
           {/* Work Phone */}
-          <div className="space-y-2">
-            <Label htmlFor="workPhone">Work Phone *</Label>
-            <Input id="workPhone" type="tel" {...register("workPhone")} />
-            {errors.workPhone && (
-              <p className="text-sm text-destructive">
-                {errors.workPhone.message}
-              </p>
+          <FormField
+            control={control}
+            name="workPhone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Work Phone *</FormLabel>
+                <FormControl>
+                  <Input type="tel" placeholder="(555) 000-0000" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )}
-          </div>
+          />
 
           {/* Extension */}
-          <div className="space-y-2">
-            <Label htmlFor="extension">Extension</Label>
-            <Input id="extension" {...register("extension")} />
-          </div>
+          <FormField
+            control={control}
+            name="extension"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Extension</FormLabel>
+                <FormControl>
+                  <Input placeholder="1234" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
           {/* Gender */}
-          <div className="space-y-2">
-            <Label htmlFor="gender">Gender</Label>
-            <Select onValueChange={(v) => setValue("gender", v as any)}>
-              <SelectTrigger id="gender">
-                <SelectValue placeholder="Select gender" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="MALE">Male</SelectItem>
-                <SelectItem value="FEMALE">Female</SelectItem>
-                <SelectItem value="OTHER">Other</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <FormField
+            control={control}
+            name="gender"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Gender</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value || ""}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="MALE">Male</SelectItem>
+                    <SelectItem value="FEMALE">Female</SelectItem>
+                    <SelectItem value="OTHER">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
           {/* Race */}
-          <div className="space-y-2">
-            <Label htmlFor="race">Race</Label>
-            <Select onValueChange={(v) => setValue("race", v as any)}>
-              <SelectTrigger id="race">
-                <SelectValue placeholder="Select race" />
-              </SelectTrigger>
-              <SelectContent>
-                {[
-                  "ASIAN",
-                  "BLACK",
-                  "CAUCASIAN",
-                  "HISPANIC",
-                  "NATIVE_AMERICAN",
-                  "PACIFIC_ISLANDER",
-                  "OTHER",
-                ].map((r) => (
-                  <SelectItem key={r} value={r}>
-                    {r.replace(/_/g, " ")}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <FormField
+            control={control}
+            name="race"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Race</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value || ""}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select race" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="AMERICAN_INDIAN_ALASKA_NATIVE">
+                      American Indian / Alaska Native
+                    </SelectItem>
+                    <SelectItem value="ASIAN">Asian</SelectItem>
+                    <SelectItem value="BLACK_AFRICAN_AMERICAN">
+                      Black / African American
+                    </SelectItem>
+                    <SelectItem value="NATIVE_HAWAIIAN_PACIFIC_ISLANDER">
+                      Native Hawaiian / Pacific Islander
+                    </SelectItem>
+                    <SelectItem value="CAUCASIAN">Caucasian</SelectItem>
+                    <SelectItem value="HISPANIC_LATINO">
+                      Hispanic / Latino
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
 
         {/* Address */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Address</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="addressLine1">Address Line 1 *</Label>
-              <Input id="addressLine1" {...register("addressLine1")} />
-              {errors.addressLine1 && (
-                <p className="text-sm text-destructive">
-                  {errors.addressLine1.message}
-                </p>
+            <FormField
+              control={control}
+              name="addressLine1"
+              render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel>Address Line 1 *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="123 Main St" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="addressLine2">Address Line 2</Label>
-              <Input id="addressLine2" {...register("addressLine2")} />
-            </div>
+            />
 
-            {(["city", "state", "zip", "country"] as const).map((field) => (
-              <div key={field} className="space-y-2">
-                <Label htmlFor={field}>
-                  {field.charAt(0).toUpperCase() +
-                    field.slice(1).replace("zip", "ZIP")}{" "}
-                  {field !== "country" && "*"}
-                </Label>
-                <Input
-                  id={field}
-                  {...register(field as keyof StaffFormData)}
-                  defaultValue={field === "country" ? "USA" : undefined}
-                />
-                {errors[field] && (
-                  <p className="text-sm text-destructive">
-                    {(errors[field] as any)?.message}
-                  </p>
-                )}
-              </div>
-            ))}
+            <FormField
+              control={control}
+              name="addressLine2"
+              render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel>Address Line 2</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Suite 100" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={control}
+              name="city"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>City *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="New York" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={control}
+              name="state"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>State *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="NY" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={control}
+              name="zip"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>ZIP Code *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="10001" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={control}
+              name="country"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Country</FormLabel>
+                  <FormControl>
+                    <Input placeholder="USA" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </div>
         </div>
 
@@ -174,49 +301,65 @@ export function PersonalInfoSection() {
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Emergency Contact</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="emergencyContact">Contact Name *</Label>
-              <Input id="emergencyContact" {...register("emergencyContact")} />
-              {errors.emergencyContact && (
-                <p className="text-sm text-destructive">
-                  {errors.emergencyContact.message}
-                </p>
+            <FormField
+              control={control}
+              name="emergencyContact"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Contact Name *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Jane Doe" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="emergencyContactPhone">Contact Phone *</Label>
-              <Input
-                id="emergencyContactPhone"
-                type="tel"
-                {...register("emergencyContactPhone")}
-              />
-              {errors.emergencyContactPhone && (
-                <p className="text-sm text-destructive">
-                  {errors.emergencyContactPhone.message}
-                </p>
+            />
+
+            <FormField
+              control={control}
+              name="emergencyContactPhone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Contact Phone *</FormLabel>
+                  <FormControl>
+                    <Input type="tel" placeholder="(555) 000-0000" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="emergencyContactEmail">Contact Email *</Label>
-              <Input
-                id="emergencyContactEmail"
-                type="email"
-                {...register("emergencyContactEmail")}
-              />
-              {errors.emergencyContactEmail && (
-                <p className="text-sm text-destructive">
-                  {errors.emergencyContactEmail.message}
-                </p>
+            />
+
+            <FormField
+              control={control}
+              name="emergencyContactEmail"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Contact Email *</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="email"
+                      placeholder="jane@example.com"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="resume">Resume URL</Label>
-              <Input
-                id="resume"
-                {...register("resume")}
-                placeholder="https://..."
-              />
-            </div>
+            />
+
+            <FormField
+              control={control}
+              name="resume"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Resume URL</FormLabel>
+                  <FormControl>
+                    <Input placeholder="https://..." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </div>
         </div>
       </CardContent>
