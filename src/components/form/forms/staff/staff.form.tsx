@@ -49,7 +49,6 @@ const defaultStaffValues: StaffFormData = {
   employmentStatus: "ACTIVE",
   staffGroup: "STAFF",
   applicationAdmin: false,
-  reportingToId: "",
 
   // Compensation
   defaultCaseRate: "0",
@@ -75,21 +74,12 @@ const defaultStaffValues: StaffFormData = {
 };
 
 export function StaffForm() {
-  const accountId = useAuthStore((state) => state.user?.accountId);
+  const accountId = useAuthStore((state) => state.user?.accountId || "2");
 
-  console.log("Account ID in StaffForm:", accountId);
-  const createStaffActionWithAccount = createStaffAction.bind(
-    null,
-    accountId || ""
-  );
-
-  const [state, formAction, isPending] = useActionState(
-    createStaffActionWithAccount,
-    {
-      success: false,
-      message: "",
-    }
-  );
+  const [state, formAction, isPending] = useActionState(createStaffAction, {
+    success: false,
+    message: "",
+  });
 
   const form = useForm<StaffFormData>({
     resolver: zodResolver(staffSchema) as unknown as Resolver<StaffFormData>,
@@ -107,7 +97,7 @@ export function StaffForm() {
     Object.entries(data).forEach(([key, value]) => {
       formData.append(key, String(value ?? ""));
     });
-    await formAction(formData);
+    formAction(formData);
   });
 
   return (

@@ -8,139 +8,131 @@ import type {
   ServerActionResult,
 } from "@/lib/types/server-action";
 import { prisma } from "@/lib/db";
+import { getCurrentUser } from "@/lib/supabase";
 
 type CreateStaffState = ActionState<StaffFormData>;
 
 /**
  * Server Action – Creates a new staff member
- * @param accountId - The ID of the account/user performing the action (passed from the client/session)
- * @param prevState - Previous form state (for useActionState)
- * @param formData - Form data from the client
  */
 export async function createStaffAction(
-  accountId: string,
   prevState: CreateStaffState | null,
   formData: FormData
 ): Promise<ServerActionResult<StaffFormData>> {
   try {
-    // Check for accountId immediately
-    if (!accountId) {
+    // 1. Authenticate user
+    const authUser = await getCurrentUser();
+    if (!authUser?.id) {
       return {
         success: false,
-        message: "Account ID is required for authorization.",
+        message: "Unauthorized: User not authenticated.",
       };
     }
 
-    // NOTE: Removed accountId extraction from formData
+    // 2. Get accountId from current staff's account
+    const staffRecord = await prisma.staff.findUnique({
+      where: { id: authUser.id },
+      select: { account: { select: { id: true } } },
+    });
 
-    // Parse and clean FormData
-    const rawData = Object.fromEntries(formData.entries());
+    const accountId = staffRecord?.account.id;
 
-    // Helper to clean string values
-    const cleanString = (key: string): string | null => {
-      const value = rawData[key];
-      if (typeof value !== "string" || value.trim() === "") return null;
-      return value.trim();
+    console.log("Account ID in createStaffAction:", accountId);
+    if (!accountId) {
+      return {
+        success: false,
+        message: "Account not found for the authenticated user.",
+      };
+    }
+
+    // 3. Parse and clean form data
+    const raw = Object.fromEntries(formData.entries());
+
+    const clean = (key: string): string | null => {
+      const val = raw[key];
+      return typeof val === "string" && val.trim() !== "" ? val.trim() : null;
     };
 
-    // Helper to parse boolean values
-    const parseBoolean = (key: string): boolean => {
-      const val = rawData[key];
-      if (typeof val === "string") {
-        const normalized = val.trim().toLowerCase();
-        return (
-          normalized === "true" || normalized === "1" || normalized === "on"
-        );
-      }
-      return false;
+    const bool = (key: string): boolean => {
+      const val = raw[key];
+      return typeof val === "string"
+        ? ["true", "1", "on"].includes(val.trim().toLowerCase())
+        : false;
     };
 
-    // Build typed data object
     const data: StaffFormData = {
-      // Personal
-      name: cleanString("name") ?? "",
-      email: cleanString("email") ?? "",
-      phone: cleanString("phone") ?? "",
-      workEmail: cleanString("workEmail") ?? "",
-      workPhone: cleanString("workPhone") ?? "",
-      extension: cleanString("extension") ?? "",
-      dob: cleanString("dob") ?? "",
-      gender: cleanString("gender") as StaffFormData["gender"],
-      race: cleanString("race") as StaffFormData["race"],
+      name: clean("name") ?? "",
+      email: clean("email") ?? "",
+      phone: clean("phone") ?? "",
+      workEmail: clean("workEmail") ?? "",
+      workPhone: clean("workPhone") ?? "",
+      extension: clean("extension") ?? "",
+      dob: clean("dob") ?? "",
+      gender: clean("gender") as StaffFormData["gender"],
+      race: clean("race") as StaffFormData["race"],
 
-      // Address
-      addressLine1: cleanString("addressLine1") ?? "",
-      addressLine2: cleanString("addressLine2") ?? "",
-      city: cleanString("city") ?? "",
-      state: cleanString("state") ?? "",
-      zip: cleanString("zip") ?? "",
-      country: cleanString("country") ?? "",
+      addressLine1: clean("addressLine1") ?? "",
+      addressLine2: clean("addressLine2") ?? "",
+      city: clean("city") ?? "",
+      state: clean("state") ?? "",
+      zip: clean("zip") ?? "",
+      country: clean("country") ?? "",
 
-      // Emergency
-      emergencyContact: cleanString("emergencyContact") ?? "",
-      emergencyContactPhone: cleanString("emergencyContactPhone") ?? "",
-      emergencyContactEmail: cleanString("emergencyContactEmail") ?? "",
+      emergencyContact: clean("emergencyContact") ?? "",
+      emergencyContactPhone: clean("emergencyContactPhone") ?? "",
+      emergencyContactEmail: clean("emergencyContactEmail") ?? "",
 
-      // Employment
-      resume: cleanString("resume") ?? "",
-      hireDate: cleanString("hireDate") ?? "",
-      leaveDate: cleanString("leaveDate") ?? "",
-      employmentStatus: (cleanString("employmentStatus") ??
+      resume: clean("resume") ?? "",
+      hireDate: clean("hireDate") ?? "",
+      leaveDate: clean("leaveDate") ?? "",
+      employmentStatus: (clean("employmentStatus") ??
         "ACTIVE") as StaffFormData["employmentStatus"],
-      staffGroup: cleanString("staffGroup") as StaffFormData["staffGroup"],
-      applicationAdmin: parseBoolean("applicationAdmin"),
-      reportingToId: cleanString("reportingToId") ?? "",
+      staffGroup: clean("staffGroup") as StaffFormData["staffGroup"],
+      applicationAdmin: bool("applicationAdmin"),
 
-      // Compensation
-      defaultCaseRate: cleanString("defaultCaseRate") ?? "0",
-      payType: (cleanString("payType") ?? "SALARY") as StaffFormData["payType"],
-      payRate: cleanString("payRate") ?? "0",
-      mileageReimbursement: cleanString("mileageReimbursement") ?? "0",
-      enableOvertime: parseBoolean("enableOvertime"),
-      overtimeRate: cleanString("overtimeRate") ?? "0",
-      weeklyBaseHours: cleanString("weeklyBaseHours") ?? "40",
+      defaultCaseRate: clean("defaultCaseRate") ?? "0",
+      payType: (clean("payType") ?? "SALARY") as StaffFormData["payType"],
+      payRate: clean("payRate") ?? "0",
+      mileageReimbursement: clean("mileageReimbursement") ?? "0",
+      enableOvertime: bool("enableOvertime"),
+      overtimeRate: clean("overtimeRate") ?? "0",
+      weeklyBaseHours: clean("weeklyBaseHours") ?? "40",
 
-      // Break
-      enableAutoBreakDeduction: parseBoolean("enableAutoBreakDeduction"),
-      breaktimeBaseHours: cleanString("breaktimeBaseHours") ?? "0",
-      breaktimeRate: cleanString("breaktimeRate") ?? "0",
+      enableAutoBreakDeduction: bool("enableAutoBreakDeduction"),
+      breaktimeBaseHours: clean("breaktimeBaseHours") ?? "0",
+      breaktimeRate: clean("breaktimeRate") ?? "0",
 
-      // Incentives
-      enablePerformanceIncentives: parseBoolean("enablePerformanceIncentives"),
-      intakeStaffIncentive: cleanString("intakeStaffIncentive") ?? "0",
-      intakeOverrideIncentive: cleanString("intakeOverrideIncentive") ?? "0",
-      managerOverrideIncentive: cleanString("managerOverrideIncentive") ?? "0",
-      referralIncentive: cleanString("referralIncentive") ?? "0",
+      enablePerformanceIncentives: bool("enablePerformanceIncentives"),
+      intakeStaffIncentive: clean("intakeStaffIncentive") ?? "0",
+      intakeOverrideIncentive: clean("intakeOverrideIncentive") ?? "0",
+      managerOverrideIncentive: clean("managerOverrideIncentive") ?? "0",
+      referralIncentive: clean("referralIncentive") ?? "0",
 
-      // Banking
-      bankName: cleanString("bankName") ?? "",
-      bankRoutingNumber: cleanString("bankRoutingNumber") ?? "",
-      bankAccountNumber: cleanString("bankAccountNumber") ?? "",
+      bankName: clean("bankName") ?? "",
+      bankRoutingNumber: clean("bankRoutingNumber") ?? "",
+      bankAccountNumber: clean("bankAccountNumber") ?? "",
     };
 
-    console.log("[createStaffAction] Creating new staff with data:", data);
-
-    // Validate with Zod
+    // 4. Validate with Zod
     const parsed = staffSchema.safeParse(data);
-
     if (!parsed.success) {
       return {
         success: false,
-        message: "Validation failed. Please check your input.",
+        message: "Please correct the errors below.",
         errors: parsed.error.format(),
       };
     }
 
     const validated = parsed.data;
 
-    // Helper – Safe decimal conversion
-    const toDecimal = (value: string | number): number => {
-      const num = typeof value === "string" ? Number.parseFloat(value) : value;
-      return isNaN(num) ? 0 : num;
+    // 5. Convert numeric strings to numbers safely
+    const num = (val: string | number): number => {
+      const n = typeof val === "string" ? parseFloat(val) : val;
+      return isNaN(n) ? 0 : n;
     };
 
-    // Prepare address JSON
-    const addressJson: Prisma.JsonObject = {
+    // 6. Build address JSON
+    const address: Prisma.JsonObject = {
       line1: validated.addressLine1,
       line2: validated.addressLine2 || "",
       city: validated.city,
@@ -149,8 +141,8 @@ export async function createStaffAction(
       country: validated.country,
     };
 
-    // Create Staff Record
-    const newStaff = await prisma.staff.create({
+    // 7. Create staff record
+    await prisma.staff.create({
       data: {
         accountId,
 
@@ -164,7 +156,7 @@ export async function createStaffAction(
         dob: new Date(validated.dob),
         gender: validated.gender || null,
         race: validated.race || null,
-        address: addressJson,
+        address,
 
         // Emergency
         emergencyContact: validated.emergencyContact,
@@ -177,29 +169,28 @@ export async function createStaffAction(
         employmentStatus: validated.employmentStatus,
         staffGroup: validated.staffGroup,
         applicationAdmin: validated.applicationAdmin,
-        reportingToId: validated.reportingToId || null,
-        resume: validated.resume || null,
+        resume: validated.resume ?? "",
 
         // Compensation
-        defaultCaseRate: toDecimal(validated.defaultCaseRate),
+        defaultCaseRate: num(validated.defaultCaseRate),
         payType: validated.payType,
-        payRate: toDecimal(validated.payRate),
-        mileageReimbursement: toDecimal(validated.mileageReimbursement),
+        payRate: num(validated.payRate),
+        mileageReimbursement: num(validated.mileageReimbursement),
         enableOvertime: validated.enableOvertime,
-        overtimeRate: toDecimal(validated.overtimeRate),
-        weeklyBaseHours: toDecimal(validated.weeklyBaseHours),
+        overtimeRate: num(validated.overtimeRate),
+        weeklyBaseHours: num(validated.weeklyBaseHours),
 
         // Break
         enableAutoBreakDeduction: validated.enableAutoBreakDeduction,
-        breaktimeBaseHours: toDecimal(validated.breaktimeBaseHours),
-        breaktimeRate: toDecimal(validated.breaktimeRate),
+        breaktimeBaseHours: num(validated.breaktimeBaseHours),
+        breaktimeRate: num(validated.breaktimeRate),
 
         // Incentives
         enablePerformanceIncentives: validated.enablePerformanceIncentives,
-        intakeStaffIncentive: toDecimal(validated.intakeStaffIncentive),
-        intakeOverrideIncentive: toDecimal(validated.intakeOverrideIncentive),
-        managerOverrideIncentive: toDecimal(validated.managerOverrideIncentive),
-        referralIncentive: toDecimal(validated.referralIncentive),
+        intakeStaffIncentive: num(validated.intakeStaffIncentive),
+        intakeOverrideIncentive: num(validated.intakeOverrideIncentive),
+        managerOverrideIncentive: num(validated.managerOverrideIncentive),
+        referralIncentive: num(validated.referralIncentive),
 
         // Banking
         bankName: validated.bankName,
@@ -212,8 +203,7 @@ export async function createStaffAction(
       },
     });
 
-    console.log("[createStaffAction] New Staff Created:", newStaff);
-
+    // 8. Revalidate cache
     revalidatePath("/staff");
 
     return {
@@ -221,31 +211,24 @@ export async function createStaffAction(
       message: "Staff member created successfully.",
     };
   } catch (error) {
-    // Error Handling
-    console.error("[createStaffAction] Error:", error);
-
-    // Handle Prisma-specific errors
+    // 9. Centralized error handling
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      // Unique constraint violation
       if (error.code === "P2002") {
-        const field = (error.meta?.target as string[])?.[0] ?? "field";
+        const field = (error.meta?.target as string[])?.[0] ?? "this field";
         return {
           success: false,
-          message: `A staff member with this ${field} already exists.`,
+          message: `A staff member with the same ${field} already exists.`,
         };
       }
 
-      // Foreign key constraint violation
       if (error.code === "P2003") {
         return {
           success: false,
-          message:
-            "Invalid reference to another record. Please check your input.",
+          message: "Invalid reference. The selected record does not exist.",
         };
       }
     }
 
-    // Handle validation errors
     if (error instanceof Prisma.PrismaClientValidationError) {
       return {
         success: false,
@@ -253,10 +236,10 @@ export async function createStaffAction(
       };
     }
 
-    // Generic error
+    console.error("[createStaffAction] Unexpected error:", error);
     return {
       success: false,
-      message: "Failed to create staff member. Please try again.",
+      message: "An unexpected error occurred. Please try again.",
     };
   }
 }

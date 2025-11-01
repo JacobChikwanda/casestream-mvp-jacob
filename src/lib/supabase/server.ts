@@ -20,11 +20,11 @@ export function createSupabaseServer({ req, res }: GetServerSidePropsContext) {
             "Set-Cookie",
             cookiesToSet.map(({ name, value, options }) =>
               serializeCookieHeader(name, value, options)
-            ),
+            )
           );
         },
       },
-    },
+    }
   );
 
   return supabase;
@@ -48,13 +48,16 @@ export async function createSupabaseServerRouteHandler() {
           });
         },
       },
-    },
+    }
   );
 
   return supabase;
 }
 
-export function createSupabaseMiddleware(request: NextRequest, response: NextResponse) {
+export function createSupabaseMiddleware(
+  request: NextRequest,
+  response: NextResponse
+) {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -70,6 +73,20 @@ export function createSupabaseMiddleware(request: NextRequest, response: NextRes
           });
         },
       },
-    },
+    }
   );
+}
+
+export async function getCurrentUser() {
+  const supabase = await createSupabaseServerRouteHandler();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    return null;
+  }
+
+  return user;
 }

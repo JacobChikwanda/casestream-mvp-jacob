@@ -47,7 +47,7 @@ export const staffSchema = z.object({
   employmentStatus: z.enum(["ACTIVE", "INACTIVE"]),
   staffGroup: z.enum(["ATTORNEY", "LAW_CLERK", "STAFF", "FIRM_MANAGER"]),
   applicationAdmin: z.boolean().default(false),
-  reportingToId: z.string().default(""),
+  reportingToId: z.string().default("").optional(),
 
   // --- Compensation ---
   defaultCaseRate: z.string().min(1, "Default case rate is required"),
