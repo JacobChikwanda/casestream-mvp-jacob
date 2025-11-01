@@ -8,8 +8,11 @@ import type {
   ServerActionResult,
 } from "@/lib/types/server-action";
 import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/supabase";
-import { sendStaffInvitation } from "@/lib/email";
+import {
+  getCurrentUser,
+  createSupabaseServerRouteHandler,
+} from "@/lib/supabase";
+import { sendStaffInvitation, sendStaffCredentials } from "@/lib/email";
 
 type CreateStaffState = ActionState<StaffFormData>;
 
@@ -31,20 +34,21 @@ export async function createStaffAction(
     }
 
     // 2. Get accountId from current staff's account
-    const staffRecord = await prisma.staff.findUnique({
+    const currentStaffRecord = await prisma.staff.findUnique({
       where: { id: authUser.id },
       select: { account: { select: { id: true } } },
     });
 
-    const accountId = staffRecord?.account.id;
-
-    console.log("Account ID in createStaffAction:", accountId);
-    if (!accountId) {
+    if (!currentStaffRecord?.account) {
       return {
         success: false,
         message: "Account not found for the authenticated user.",
       };
     }
+
+    const accountId = currentStaffRecord.account.id;
+
+    console.log("Account ID in createStaffAction:", accountId);
 
     // 3. Parse and clean form data
     const raw = Object.fromEntries(formData.entries());
@@ -141,109 +145,154 @@ export async function createStaffAction(
 
     // 5. Data is now properly typed from validation
 
-    // 6. Build address JSON
-    const address: Prisma.JsonObject = {
-      line1: validated.addressLine1,
-      line2: validated.addressLine2 || "",
-      city: validated.city,
-      state: validated.state,
-      zip: validated.zip,
-      country: validated.country,
-    };
+    // 6. Generate default password for new staff user (industry standard: simple, memorable password)
+    const defaultPassword = "Welcome123!";
 
-    // 7. Create staff record
-    await prisma.staff.create({
-      data: {
-        accountId,
+    // 7. Create Supabase user first
+    const supabase = await createSupabaseServerRouteHandler();
+    let createdUserId: string | null = null;
 
-        // Personal
-        name: validated.name,
-        email: validated.email || "",
-        phone: validated.phone,
-        workEmail: validated.workEmail,
-        workPhone: validated.workPhone,
-        extension: validated.extension || "",
-        dob: new Date(validated.dob),
-        gender: validated.gender || null,
-        race: validated.race || null,
-        address,
+    try {
+      const { data: authData, error: authError } =
+        await supabase.auth.admin.createUser({
+          email: validated.workEmail || validated.email,
+          password: defaultPassword,
+          email_confirm: true,
+          user_metadata: {
+            name: validated.name,
+            phone: validated.phone,
+          },
+        });
 
-        // Emergency
-        emergencyContact: validated.emergencyContact,
-        emergencyContactPhone: validated.emergencyContactPhone,
-        emergencyContactEmail: validated.emergencyContactEmail,
+      if (authError || !authData.user) {
+        console.error("[createStaffAction] Auth error:", authError);
+        return {
+          success: false,
+          message: authError?.message || "Failed to create user account.",
+        };
+      }
 
-        // Employment
-        hireDate: new Date(validated.hireDate),
-        leaveDate: validated.leaveDate ? new Date(validated.leaveDate) : null,
-        employmentStatus: validated.employmentStatus,
-        staffGroup: validated.staffGroup,
-        applicationAdmin: validated.applicationAdmin,
-        resume: validated.resume ?? "",
-        reportingToId: validated.reportingToId || null,
+      createdUserId = authData.user.id;
 
-        // Compensation
-        defaultCaseRate: validated.defaultCaseRate,
-        payType: validated.payType,
-        payRate: validated.payRate,
-        mileageReimbursement: validated.mileageReimbursement,
-        enableOvertime: validated.enableOvertime,
-        overtimeRate: validated.overtimeRate,
-        weeklyBaseHours: validated.weeklyBaseHours,
+      // 8. Build address JSON
+      const address: Prisma.JsonObject = {
+        line1: validated.addressLine1,
+        line2: validated.addressLine2 || "",
+        city: validated.city,
+        state: validated.state,
+        zip: validated.zip,
+        country: validated.country,
+      };
 
-        // Break
-        enableAutoBreakDeduction: validated.enableAutoBreakDeduction,
-        breaktimeBaseHours: validated.breaktimeBaseHours,
-        breaktimeRate: validated.breaktimeRate,
+      // 9. Create staff record
+      await prisma.staff.create({
+        data: {
+          id: authData.user.id, // Use Supabase user ID as staff ID
+          accountId,
 
-        // Incentives
-        enablePerformanceIncentives: validated.enablePerformanceIncentives,
-        intakeStaffIncentive: validated.intakeStaffIncentive,
-        intakeOverrideIncentive: validated.intakeOverrideIncentive,
-        managerOverrideIncentive: validated.managerOverrideIncentive,
-        referralIncentive: validated.referralIncentive,
+          // Personal
+          name: validated.name,
+          email: validated.email || "",
+          phone: validated.phone,
+          workEmail: validated.workEmail,
+          workPhone: validated.workPhone,
+          extension: validated.extension || "",
+          dob: new Date(validated.dob),
+          gender: validated.gender || null,
+          race: validated.race || null,
+          address,
 
-        // Banking
-        bankName: validated.bankName,
-        bankRoutingNumber: validated.bankRoutingNumber,
-        bankAccountNumber: validated.bankAccountNumber,
+          // Emergency
+          emergencyContact: validated.emergencyContact,
+          emergencyContactPhone: validated.emergencyContactPhone,
+          emergencyContactEmail: validated.emergencyContactEmail,
 
-        // Audit
-        // createdById: accountId,
-        // updatedById: accountId,
-      },
-    });
+          // Employment
+          hireDate: new Date(validated.hireDate),
+          leaveDate: validated.leaveDate ? new Date(validated.leaveDate) : null,
+          employmentStatus: validated.employmentStatus,
+          staffGroup: validated.staffGroup,
+          applicationAdmin: validated.applicationAdmin,
+          resume: validated.resume ?? "",
+          reportingToId: validated.reportingToId || null,
 
-    // 8. Send invitation email (if workEmail is provided)
+          // Compensation
+          defaultCaseRate: validated.defaultCaseRate,
+          payType: validated.payType,
+          payRate: validated.payRate,
+          mileageReimbursement: validated.mileageReimbursement,
+          enableOvertime: validated.enableOvertime,
+          overtimeRate: validated.overtimeRate,
+          weeklyBaseHours: validated.weeklyBaseHours,
+
+          // Break
+          enableAutoBreakDeduction: validated.enableAutoBreakDeduction,
+          breaktimeBaseHours: validated.breaktimeBaseHours,
+          breaktimeRate: validated.breaktimeRate,
+
+          // Incentives
+          enablePerformanceIncentives: validated.enablePerformanceIncentives,
+          intakeStaffIncentive: validated.intakeStaffIncentive,
+          intakeOverrideIncentive: validated.intakeOverrideIncentive,
+          managerOverrideIncentive: validated.managerOverrideIncentive,
+          referralIncentive: validated.referralIncentive,
+
+          // Banking
+          bankName: validated.bankName,
+          bankRoutingNumber: validated.bankRoutingNumber,
+          bankAccountNumber: validated.bankAccountNumber,
+
+          // Audit
+          // createdById: accountId,
+          // updatedById: accountId,
+        },
+      });
+    } catch (creationError) {
+      // Cleanup: Delete Supabase user if staff creation failed
+      if (createdUserId) {
+        try {
+          await supabase.auth.admin.deleteUser(createdUserId);
+        } catch (cleanupError) {
+          console.error(
+            "[createStaffAction] Failed to cleanup Supabase user:",
+            cleanupError
+          );
+        }
+      }
+      throw creationError; // Re-throw to be handled by outer catch
+    }
+
+    // 10. Send credentials email (if workEmail is provided)
     let emailSent = false;
     if (validated.workEmail) {
       try {
-        await sendStaffInvitation({
+        await sendStaffCredentials({
           name: validated.name,
           workEmail: validated.workEmail,
+          password: defaultPassword,
           companyName: "CaseStream", // You can make this configurable later
         });
         emailSent = true;
       } catch (emailError) {
         // Log email error but don't fail the staff creation
         console.error(
-          "[createStaffAction] Failed to send invitation email:",
+          "[createStaffAction] Failed to send credentials email:",
           emailError
         );
       }
     }
 
-    // 9. Revalidate cache
+    // 11. Revalidate cache
     revalidatePath("/staff");
 
     return {
       success: true,
       message: emailSent
-        ? "Staff member created successfully. Invitation email sent."
+        ? "Staff member created successfully. Credentials email sent."
         : "Staff member created successfully.",
     };
   } catch (error) {
-    // 9. Centralized error handling
+    // 12. Centralized error handling
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === "P2002") {
         const field = (error.meta?.target as string[])?.[0] ?? "this field";

@@ -139,6 +139,85 @@ export const emailTemplates = {
       This is an automated message. Please do not reply to this email.
     `,
   }),
+
+  staffCredentials: (data: {
+    name: string;
+    workEmail: string;
+    password: string;
+    companyName?: string;
+  }) => ({
+    subject: `Your Account Credentials for ${data.companyName || "CaseStream"}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Your Account Credentials</title>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .credentials { background: #fff; border: 1px solid #ddd; padding: 20px; border-radius: 5px; margin: 20px 0; }
+            .credential-item { margin: 10px 0; }
+            .credential-label { font-weight: bold; color: #667eea; }
+            .credential-value { font-family: monospace; background: #f5f5f5; padding: 5px 10px; border-radius: 3px; }
+            .warning { background: #fff3cd; border: 1px solid #ffeeba; color: #856404; padding: 15px; border-radius: 5px; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Welcome to ${data.companyName || "CaseStream"}!</h1>
+            <p>Your account has been created</p>
+          </div>
+          <div class="content">
+            <h2>Hello ${data.name},</h2>
+            <p>Your staff account has been successfully created. Here are your login credentials:</p>
+
+            <div class="credentials">
+              <div class="credential-item">
+                <span class="credential-label">Email:</span>
+                <span class="credential-value">${data.workEmail}</span>
+              </div>
+              <div class="credential-item">
+                <span class="credential-label">Password:</span>
+                <span class="credential-value">${data.password}</span>
+              </div>
+            </div>
+
+            <div class="warning">
+              <strong>Important:</strong> Please change your password after your first login for security purposes.
+            </div>
+
+            <p>You can now log in to your account and access the staff dashboard.</p>
+
+            <p>Best regards,<br>The ${data.companyName || "CaseStream"} Team</p>
+          </div>
+          <div class="footer">
+            <p>This is an automated message. Please do not reply to this email.</p>
+          </div>
+        </body>
+      </html>
+    `,
+    text: `
+Hello ${data.name},
+
+Your staff account has been successfully created. Here are your login credentials:
+
+Email: ${data.workEmail}
+Password: ${data.password}
+
+Important: Please change your password after your first login for security purposes.
+
+You can now log in to your account and access the staff dashboard.
+
+Best regards,
+The ${data.companyName || "CaseStream"} Team
+
+This is an automated message. Please do not reply to this email.
+    `.trim(),
+  }),
 };
 
 // Send email function
@@ -207,6 +286,23 @@ export const sendStaffInvitation = async (staffData: {
     ...staffData,
     inviteUrl,
   });
+
+  return await sendEmail({
+    to: staffData.workEmail,
+    subject: template.subject,
+    html: template.html,
+    text: template.text,
+  });
+};
+
+// Send staff credentials email
+export const sendStaffCredentials = async (staffData: {
+  name: string;
+  workEmail: string;
+  password: string;
+  companyName?: string;
+}) => {
+  const template = emailTemplates.staffCredentials(staffData);
 
   return await sendEmail({
     to: staffData.workEmail,
