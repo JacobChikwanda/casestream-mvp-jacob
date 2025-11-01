@@ -9,7 +9,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useStaffForm } from "./useStaffForm";
+import { useStaffForm } from "@/hooks/useStaffForm";
 
 export function BankingInfoSection() {
   const { control } = useStaffForm();

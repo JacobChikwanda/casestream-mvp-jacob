@@ -3,9 +3,9 @@ import * as z from "zod";
 export const staffSchema = z.object({
   // --- Personal ---
   name: z.string().min(1, "Name is required"),
-  email: z.string().email("Invalid email").or(z.literal("")).optional(),
+  email: z.email("Invalid email").or(z.literal("")).optional(),
   phone: z.string().min(1, "Phone is required"),
-  workEmail: z.string().email("Invalid work email"),
+  workEmail: z.email("Invalid work email"),
   workPhone: z.string().min(1, "Work phone is required"),
   extension: z.string().default(""), // ✅ .default("") instead of .min(0)
   dob: z.string().min(1, "Date of birth is required"),
@@ -35,7 +35,7 @@ export const staffSchema = z.object({
   emergencyContactPhone: z
     .string()
     .min(1, "Emergency contact phone is required"),
-  emergencyContactEmail: z.string().email("Invalid emergency contact email"),
+  emergencyContactEmail: z.email("Invalid emergency contact email"),
 
   // --- Employment ---
   resume: z
@@ -50,25 +50,67 @@ export const staffSchema = z.object({
   reportingToId: z.string().default("").optional(),
 
   // --- Compensation ---
-  defaultCaseRate: z.string().min(1, "Default case rate is required"),
+  defaultCaseRate: z.coerce
+    .number()
+    .min(0, "Default case rate must be non-negative")
+    .max(99999999.99, "Default case rate cannot exceed 99,999,999.99"),
   payType: z.enum(["SALARY", "HOURLY"]),
-  payRate: z.string().min(1, "Pay rate is required"),
-  mileageReimbursement: z.string().default("0"),
+  payRate: z.coerce
+    .number()
+    .min(0, "Pay rate must be non-negative")
+    .max(99999999.99, "Pay rate cannot exceed 99,999,999.99"),
+  mileageReimbursement: z.coerce
+    .number()
+    .min(0, "Mileage reimbursement must be non-negative")
+    .max(99999999.99, "Mileage reimbursement cannot exceed 99,999,999.99")
+    .default(0),
   enableOvertime: z.boolean().default(false),
-  overtimeRate: z.string().default("0"),
-  weeklyBaseHours: z.string().default("40"),
+  overtimeRate: z.coerce
+    .number()
+    .min(0, "Overtime rate must be non-negative")
+    .max(99999999.99, "Overtime rate cannot exceed 99,999,999.99")
+    .default(0),
+  weeklyBaseHours: z.coerce
+    .number()
+    .min(0, "Weekly base hours must be non-negative")
+    .max(999.99, "Weekly base hours cannot exceed 999.99")
+    .default(40),
 
   // --- Break ---
   enableAutoBreakDeduction: z.boolean().default(false),
-  breaktimeBaseHours: z.string().default("0"),
-  breaktimeRate: z.string().default("0"),
+  breaktimeBaseHours: z.coerce
+    .number()
+    .min(0, "Break time base hours must be non-negative")
+    .max(999.99, "Break time base hours cannot exceed 999.99")
+    .default(0),
+  breaktimeRate: z.coerce
+    .number()
+    .min(0, "Break time rate must be non-negative")
+    .max(99999999.99, "Break time rate cannot exceed 99,999,999.99")
+    .default(0),
 
   // --- Incentives ---
   enablePerformanceIncentives: z.boolean().default(false),
-  intakeStaffIncentive: z.string().default("0"),
-  intakeOverrideIncentive: z.string().default("0"),
-  managerOverrideIncentive: z.string().default("0"),
-  referralIncentive: z.string().default("0"),
+  intakeStaffIncentive: z.coerce
+    .number()
+    .min(0, "Intake staff incentive must be non-negative")
+    .max(99999999.99, "Intake staff incentive cannot exceed 99,999,999.99")
+    .default(0),
+  intakeOverrideIncentive: z.coerce
+    .number()
+    .min(0, "Intake override incentive must be non-negative")
+    .max(99999999.99, "Intake override incentive cannot exceed 99,999,999.99")
+    .default(0),
+  managerOverrideIncentive: z.coerce
+    .number()
+    .min(0, "Manager override incentive must be non-negative")
+    .max(99999999.99, "Manager override incentive cannot exceed 99,999,999.99")
+    .default(0),
+  referralIncentive: z.coerce
+    .number()
+    .min(0, "Referral incentive must be non-negative")
+    .max(99999999.99, "Referral incentive cannot exceed 99,999,999.99")
+    .default(0),
 
   // --- Banking ---
   bankName: z.string().min(1, "Bank name is required"),

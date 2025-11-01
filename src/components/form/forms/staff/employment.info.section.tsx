@@ -17,7 +17,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useStaffForm } from "./useStaffForm";
+import { useStaffForm } from "@/hooks/useStaffForm";
+import { ReportingToSelect } from "./reporting.to.select";
 
 export function EmploymentInfoSection() {
   const { control, watch } = useStaffForm();
@@ -65,8 +66,9 @@ export function EmploymentInfoSection() {
               <FormItem>
                 <FormLabel>Employment Status *</FormLabel>
                 <Select
+                  name={field.name}
                   onValueChange={field.onChange}
-                  defaultValue={field.value}
+                  value={field.value}
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -90,8 +92,9 @@ export function EmploymentInfoSection() {
               <FormItem>
                 <FormLabel>Staff Group *</FormLabel>
                 <Select
+                  name={field.name}
                   onValueChange={field.onChange}
-                  defaultValue={field.value}
+                  value={field.value}
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -115,12 +118,11 @@ export function EmploymentInfoSection() {
             name="reportingToId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Reports To (Staff ID)</FormLabel>
+                <FormLabel>Reports To</FormLabel>
                 <FormControl>
-                  <Input
-                    placeholder="Enter staff ID"
-                    {...field}
-                    value={field.value || ""}
+                  <ReportingToSelect
+                    value={field.value}
+                    onValueChange={field.onChange}
                   />
                 </FormControl>
                 <FormMessage />

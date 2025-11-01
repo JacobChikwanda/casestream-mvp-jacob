@@ -1,4 +1,3 @@
-// lib/types/server-action.ts
 import type { z } from "zod";
 
 export type ActionState<T = unknown> = {

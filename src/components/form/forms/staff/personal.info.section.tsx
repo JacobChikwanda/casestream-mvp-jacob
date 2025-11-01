@@ -16,7 +16,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useStaffForm } from "./useStaffForm";
+import { useStaffForm } from "@/hooks/useStaffForm";
 
 export function PersonalInfoSection() {
   const { control } = useStaffForm();
@@ -149,8 +149,9 @@ export function PersonalInfoSection() {
               <FormItem>
                 <FormLabel>Gender</FormLabel>
                 <Select
+                  name={field.name}
                   onValueChange={field.onChange}
-                  defaultValue={field.value || ""}
+                  value={field.value || ""}
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -176,8 +177,9 @@ export function PersonalInfoSection() {
               <FormItem>
                 <FormLabel>Race</FormLabel>
                 <Select
+                  name={field.name}
                   onValueChange={field.onChange}
-                  defaultValue={field.value || ""}
+                  value={field.value || ""}
                 >
                   <FormControl>
                     <SelectTrigger>

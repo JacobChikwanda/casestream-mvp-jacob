@@ -11,14 +11,16 @@ import { createStaffAction } from "@/actions/staff/createStaff";
 import { useActionState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CheckCircle2, XCircle } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 import { useAuthStore } from "@/lib/store/auth";
 import { PersonalInfoSection } from "./personal.info.section";
 import { EmploymentInfoSection } from "./employment.info.section";
 import { CompensationSection } from "./compensation.section";
 import { BankingInfoSection } from "./banking.info.section";
+import { type ActionState } from "@/lib/types/server-action";
+import { getFieldErrors } from "@/lib/validations/zod";
 
 const defaultStaffValues: StaffFormData = {
-  // Personal Info
   name: "",
   email: "",
   phone: "",
@@ -28,46 +30,36 @@ const defaultStaffValues: StaffFormData = {
   dob: "",
   gender: null,
   race: null,
-
-  // Address
   addressLine1: "",
   addressLine2: "",
   city: "",
   state: "",
   zip: "",
   country: "USA",
-
-  // Emergency Contact
   emergencyContact: "",
   emergencyContactPhone: "",
   emergencyContactEmail: "",
   resume: "",
-
-  // Employment
   hireDate: "",
   leaveDate: "",
   employmentStatus: "ACTIVE",
   staffGroup: "STAFF",
   applicationAdmin: false,
-
-  // Compensation
-  defaultCaseRate: "0",
+  defaultCaseRate: 0,
   payType: "HOURLY",
-  payRate: "0",
-  mileageReimbursement: "0",
+  payRate: 0,
+  mileageReimbursement: 0,
   enableOvertime: false,
-  overtimeRate: "0",
-  weeklyBaseHours: "40",
+  overtimeRate: 0,
+  weeklyBaseHours: 40,
   enableAutoBreakDeduction: false,
-  breaktimeBaseHours: "0",
-  breaktimeRate: "0",
+  breaktimeBaseHours: 0,
+  breaktimeRate: 0,
   enablePerformanceIncentives: false,
-  intakeStaffIncentive: "0",
-  intakeOverrideIncentive: "0",
-  managerOverrideIncentive: "0",
-  referralIncentive: "0",
-
-  // Banking
+  intakeStaffIncentive: 0,
+  intakeOverrideIncentive: 0,
+  managerOverrideIncentive: 0,
+  referralIncentive: 0,
   bankName: "",
   bankRoutingNumber: "",
   bankAccountNumber: "",
@@ -76,32 +68,52 @@ const defaultStaffValues: StaffFormData = {
 export function StaffForm() {
   const accountId = useAuthStore((state) => state.user?.accountId || "2");
 
+  // useActionState with correct typing
   const [state, formAction, isPending] = useActionState(createStaffAction, {
-    success: false,
+    success: undefined,
     message: "",
-  });
+    errors: undefined,
+    data: undefined,
+  } satisfies ActionState<StaffFormData>);
 
   const form = useForm<StaffFormData>({
     resolver: zodResolver(staffSchema) as unknown as Resolver<StaffFormData>,
     defaultValues: defaultStaffValues,
+    mode: "onTouched",
   });
 
+  // Reset form on success
   useEffect(() => {
     if (state.success) {
       form.reset();
     }
   }, [state.success, form]);
 
-  const handleFormSubmit = form.handleSubmit(async (data) => {
-    const formData = new FormData();
-    Object.entries(data).forEach(([key, value]) => {
-      formData.append(key, String(value ?? ""));
-    });
-    formAction(formData);
-  });
+  // Sync server errors to react-hook-form
+  useEffect(() => {
+    if (state.errors) {
+      Object.entries(state.errors).forEach(([field, value]) => {
+        if (
+          field !== "_errors" &&
+          typeof value === "object" &&
+          value !== null
+        ) {
+          const messages = (value as any)._errors;
+          if (messages && messages.length > 0) {
+            form.setError(field as keyof StaffFormData, {
+              type: "server",
+              message: messages.join(", "),
+            });
+          }
+        }
+      });
+    }
+  }, [state.errors, form]);
 
+  const fieldErrors = state.errors ? getFieldErrors(state.errors) : {};
   return (
     <div className="space-y-6">
+      {/* General Message */}
       {state.message && (
         <Alert variant={state.success ? "default" : "destructive"}>
           {state.success ? (
@@ -114,15 +126,16 @@ export function StaffForm() {
         </Alert>
       )}
 
-      {state.errors && Object.keys(state.errors).length > 0 && (
+      {/* Server Validation Errors */}
+      {Object.keys(fieldErrors).length > 0 && (
         <Alert variant="destructive">
           <XCircle className="h-4 w-4" />
-          <AlertTitle>Server Validation Errors</AlertTitle>
+          <AlertTitle>Validation Errors</AlertTitle>
           <AlertDescription>
             <ul className="list-disc list-inside space-y-1">
-              {Object.entries(state.errors).map(([field, messages]) => (
+              {Object.entries(fieldErrors).map(([field, messages]) => (
                 <li key={field}>
-                  <strong>{field}:</strong> {messages?.join(", ")}
+                  <strong>{field}:</strong> {messages.join(", ")}
                 </li>
               ))}
             </ul>
@@ -131,18 +144,33 @@ export function StaffForm() {
       )}
 
       <Form {...form}>
-        <form onSubmit={handleFormSubmit} className="space-y-8">
+        <form action={formAction} className="space-y-8">
+          {/* Hidden field for accountId */}
+          <input type="hidden" name="accountId" value={accountId} />
+
           <PersonalInfoSection />
           <EmploymentInfoSection />
           <CompensationSection />
           <BankingInfoSection />
 
           <div className="flex justify-end gap-4">
-            <Button type="button" variant="outline" disabled={isPending}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isPending}
+              onClick={() => form.reset()}
+            >
               Cancel
             </Button>
             <Button type="submit" size="lg" disabled={isPending}>
-              {isPending ? "Saving..." : "Save Staff Member"}
+              {isPending ? (
+                <>
+                  <Spinner className="mr-2 h-4 w-4" />
+                  Saving...
+                </>
+              ) : (
+                "Save Staff Member"
+              )}
             </Button>
           </div>
         </form>

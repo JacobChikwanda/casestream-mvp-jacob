@@ -17,7 +17,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useStaffForm } from "./useStaffForm";
+import { useStaffForm } from "@/hooks/useStaffForm";
 
 export function CompensationSection() {
   const { control, watch } = useStaffForm();
@@ -60,8 +60,9 @@ export function CompensationSection() {
               <FormItem>
                 <FormLabel>Pay Type *</FormLabel>
                 <Select
+                  name={field.name}
                   onValueChange={field.onChange}
-                  defaultValue={field.value}
+                  value={field.value}
                 >
                   <FormControl>
                     <SelectTrigger>

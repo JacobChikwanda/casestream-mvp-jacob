@@ -60,6 +60,15 @@ export async function createStaffAction(
         : false;
     };
 
+    const num = (key: string, defaultValue: number = 0): number => {
+      const val = raw[key];
+      if (typeof val === "string") {
+        const n = parseFloat(val.trim());
+        return isNaN(n) ? defaultValue : n;
+      }
+      return defaultValue;
+    };
+
     const data: StaffFormData = {
       name: clean("name") ?? "",
       email: clean("email") ?? "",
@@ -87,31 +96,34 @@ export async function createStaffAction(
       leaveDate: clean("leaveDate") ?? "",
       employmentStatus: (clean("employmentStatus") ??
         "ACTIVE") as StaffFormData["employmentStatus"],
-      staffGroup: clean("staffGroup") as StaffFormData["staffGroup"],
+      staffGroup: (clean("staffGroup") ?? "STAFF") as StaffFormData["staffGroup"],
       applicationAdmin: bool("applicationAdmin"),
+      reportingToId: clean("reportingToId") ?? "",
 
-      defaultCaseRate: clean("defaultCaseRate") ?? "0",
+      defaultCaseRate: num("defaultCaseRate", 0),
       payType: (clean("payType") ?? "SALARY") as StaffFormData["payType"],
-      payRate: clean("payRate") ?? "0",
-      mileageReimbursement: clean("mileageReimbursement") ?? "0",
+      payRate: num("payRate", 0),
+      mileageReimbursement: num("mileageReimbursement", 0),
       enableOvertime: bool("enableOvertime"),
-      overtimeRate: clean("overtimeRate") ?? "0",
-      weeklyBaseHours: clean("weeklyBaseHours") ?? "40",
+      overtimeRate: num("overtimeRate", 0),
+      weeklyBaseHours: num("weeklyBaseHours", 40),
 
       enableAutoBreakDeduction: bool("enableAutoBreakDeduction"),
-      breaktimeBaseHours: clean("breaktimeBaseHours") ?? "0",
-      breaktimeRate: clean("breaktimeRate") ?? "0",
+      breaktimeBaseHours: num("breaktimeBaseHours", 0),
+      breaktimeRate: num("breaktimeRate", 0),
 
       enablePerformanceIncentives: bool("enablePerformanceIncentives"),
-      intakeStaffIncentive: clean("intakeStaffIncentive") ?? "0",
-      intakeOverrideIncentive: clean("intakeOverrideIncentive") ?? "0",
-      managerOverrideIncentive: clean("managerOverrideIncentive") ?? "0",
-      referralIncentive: clean("referralIncentive") ?? "0",
+      intakeStaffIncentive: num("intakeStaffIncentive", 0),
+      intakeOverrideIncentive: num("intakeOverrideIncentive", 0),
+      managerOverrideIncentive: num("managerOverrideIncentive", 0),
+      referralIncentive: num("referralIncentive", 0),
 
       bankName: clean("bankName") ?? "",
       bankRoutingNumber: clean("bankRoutingNumber") ?? "",
       bankAccountNumber: clean("bankAccountNumber") ?? "",
     };
+
+    console.log("Cleaned form data:", data);
 
     // 4. Validate with Zod
     const parsed = staffSchema.safeParse(data);
@@ -125,11 +137,7 @@ export async function createStaffAction(
 
     const validated = parsed.data;
 
-    // 5. Convert numeric strings to numbers safely
-    const num = (val: string | number): number => {
-      const n = typeof val === "string" ? parseFloat(val) : val;
-      return isNaN(n) ? 0 : n;
-    };
+    // 5. Data is now properly typed from validation
 
     // 6. Build address JSON
     const address: Prisma.JsonObject = {
@@ -170,27 +178,28 @@ export async function createStaffAction(
         staffGroup: validated.staffGroup,
         applicationAdmin: validated.applicationAdmin,
         resume: validated.resume ?? "",
+        reportingToId: validated.reportingToId || null,
 
         // Compensation
-        defaultCaseRate: num(validated.defaultCaseRate),
+        defaultCaseRate: validated.defaultCaseRate,
         payType: validated.payType,
-        payRate: num(validated.payRate),
-        mileageReimbursement: num(validated.mileageReimbursement),
+        payRate: validated.payRate,
+        mileageReimbursement: validated.mileageReimbursement,
         enableOvertime: validated.enableOvertime,
-        overtimeRate: num(validated.overtimeRate),
-        weeklyBaseHours: num(validated.weeklyBaseHours),
+        overtimeRate: validated.overtimeRate,
+        weeklyBaseHours: validated.weeklyBaseHours,
 
         // Break
         enableAutoBreakDeduction: validated.enableAutoBreakDeduction,
-        breaktimeBaseHours: num(validated.breaktimeBaseHours),
-        breaktimeRate: num(validated.breaktimeRate),
+        breaktimeBaseHours: validated.breaktimeBaseHours,
+        breaktimeRate: validated.breaktimeRate,
 
         // Incentives
         enablePerformanceIncentives: validated.enablePerformanceIncentives,
-        intakeStaffIncentive: num(validated.intakeStaffIncentive),
-        intakeOverrideIncentive: num(validated.intakeOverrideIncentive),
-        managerOverrideIncentive: num(validated.managerOverrideIncentive),
-        referralIncentive: num(validated.referralIncentive),
+        intakeStaffIncentive: validated.intakeStaffIncentive,
+        intakeOverrideIncentive: validated.intakeOverrideIncentive,
+        managerOverrideIncentive: validated.managerOverrideIncentive,
+        referralIncentive: validated.referralIncentive,
 
         // Banking
         bankName: validated.bankName,
@@ -198,8 +207,8 @@ export async function createStaffAction(
         bankAccountNumber: validated.bankAccountNumber,
 
         // Audit
-        createdById: accountId,
-        updatedById: accountId,
+        // createdById: accountId,
+        // updatedById: accountId,
       },
     });
 
