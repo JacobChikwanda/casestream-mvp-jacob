@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { subscribeWithSelector } from "zustand/middleware";
+import { subscribeWithSelector, devtools } from "zustand/middleware";
 import { createSupabaseClient } from "@/lib/supabase/client";
 
 export interface User {
@@ -17,45 +17,53 @@ export interface AuthState {
   isLoading: boolean;
   isAuthenticated: boolean;
   setUser: (user: User | null) => void;
+  updateUser: (data: Partial<User>) => void;
   setLoading: (loading: boolean) => void;
   logout: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
-  subscribeWithSelector((set) => ({
-    user: null,
-    isLoading: true,
-    isAuthenticated: false,
-    setUser: (user) =>
-      set({
-        user,
-        isAuthenticated: !!user,
-        isLoading: false,
-      }),
-    setLoading: (loading) => set({ isLoading: loading }),
-    logout: async () => {
-      try {
-        // Sign out from Supabase
-        const supabase = createSupabaseClient();
-        await supabase.auth.signOut();
-
-        // Call logout API to clear server-side session
-        await fetch("/api/auth/logout", { method: "POST" });
-      } catch (error) {
-        console.error("[auth] Logout error:", error);
-      } finally {
-        // Clear local state
+  devtools(
+    subscribeWithSelector((set) => ({
+      user: null,
+      isLoading: true,
+      isAuthenticated: false,
+      setUser: (user) =>
         set({
-          user: null,
-          isAuthenticated: false,
+          user,
+          isAuthenticated: !!user,
           isLoading: false,
-        });
+        }),
+      // ✅ Merge partial user updates without requiring full User object
+      updateUser: (data) =>
+        set((state) => ({
+          user: state.user ? { ...state.user, ...data } : null,
+        })),
+      setLoading: (loading) => set({ isLoading: loading }),
+      logout: async () => {
+        try {
+          // Sign out from Supabase
+          const supabase = createSupabaseClient();
+          await supabase.auth.signOut();
 
-        // Redirect to login
-        if (typeof window !== "undefined") {
-          window.location.href = "/login";
+          // Call logout API to clear server-side session
+          await fetch("/api/auth/logout", { method: "POST" });
+        } catch (error) {
+          console.error("[auth] Logout error:", error);
+        } finally {
+          // Clear local state
+          set({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+          });
+
+          // Redirect to login
+          if (typeof window !== "undefined") {
+            window.location.href = "/login";
+          }
         }
-      }
-    },
-  })),
+      },
+    }))
+  )
 );

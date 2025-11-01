@@ -11,6 +11,7 @@ export interface LoginResult {
   redirectTo?: string;
   userId?: string;
   accountSlug?: string;
+  accountId?: string;
 }
 
 /**
@@ -158,6 +159,7 @@ export async function loginAction(
       redirectTo,
       userId: authData.user.id,
       accountSlug,
+      accountId,
     };
   } catch (error) {
     console.error("[login] Server action error:", error);
