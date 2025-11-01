@@ -1,26 +1,35 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { zodResolver } from "@hookform/resolvers/zod"
-import Link from "next/link"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
-import Image from "next/image"
-import { useState } from "react"
-import { loginAction } from "@/actions/auth/login"
-import { toast } from "@/lib/helpers/toast"
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { zodResolver } from "@hookform/resolvers/zod";
+import Link from "next/link";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import Image from "next/image";
+import { useState } from "react";
+import { loginAction } from "@/actions/auth/login";
+import { toast } from "@/lib/helpers/toast";
+import { useAuthStore } from "@/lib/store/auth";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
-})
+});
 
-type LoginFormValues = z.infer<typeof loginSchema>
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const updateUser = useAuthStore((state) => state.updateUser);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -28,60 +37,73 @@ export default function LoginPage() {
       email: "",
       password: "",
     },
-  })
+  });
 
   const onSubmit = async (data: LoginFormValues) => {
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
       // Call server action
-      const result = await loginAction(data.email, data.password)
+      const result = await loginAction(data.email, data.password);
 
       if (!result.success) {
         toast.error({
           title: "Login failed",
           description: result.message,
-        })
-        setIsSubmitting(false)
-        return
+        });
+        setIsSubmitting(false);
+        return;
       }
+
+      updateUser({ accountId: result.accountId });
 
       toast.success({
         title: "Login successful!",
         description: "Redirecting...",
-      })
+      });
 
       // Wait a moment then do a full page reload to redirect
       // This ensures Supabase session is fully established
       setTimeout(() => {
         if (result.redirectTo) {
-          window.location.href = result.redirectTo
+          window.location.href = result.redirectTo;
         } else {
-          window.location.href = "/"
+          window.location.href = "/";
         }
-      }, 1000)
+      }, 1000);
     } catch (error) {
-      console.error("[Login error]", error)
+      console.error("[Login error]", error);
       toast.error({
         title: "Something went wrong",
         description: "Please try again later.",
-      })
-      setIsSubmitting(false)
+      });
+      setIsSubmitting(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-slate-50 via-blue-50/30 to-purple-50/20 px-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <Link href="/" className="flex items-center justify-center mb-8">
-          <Image src="/cs-logo-long.png" alt="CaseStream" width={200} height={45} className="h-10 w-auto" priority />
+          <Image
+            src="/cs-logo-long.png"
+            alt="CaseStream"
+            width={200}
+            height={45}
+            className="h-10 w-auto"
+            priority
+          />
         </Link>
 
         {/* Login Card */}
         <div className="rounded-3xl bg-white p-8 shadow-xl border-2 border-slate-200">
           <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">Welcome back</h1>
-            <p className="text-slate-600">Sign in to your account to continue</p>
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">
+              Welcome back
+            </h1>
+            <p className="text-slate-600">
+              Sign in to your account to continue
+            </p>
           </div>
 
           <Form {...form}>
@@ -114,7 +136,10 @@ export default function LoginPage() {
                   <FormItem>
                     <div className="flex items-center justify-between">
                       <FormLabel>Password</FormLabel>
-                      <Link href="/forgot-password" className="text-sm text-blue-600 hover:text-blue-700">
+                      <Link
+                        href="/forgot-password"
+                        className="text-sm text-blue-600 hover:text-blue-700"
+                      >
                         Forgot password?
                       </Link>
                     </div>
@@ -152,7 +177,10 @@ export default function LoginPage() {
 
           <div className="mt-6 text-center text-sm text-slate-600">
             Don&apos;t have an account?{" "}
-            <Link href="/signup" className="font-semibold text-blue-600 hover:text-blue-700">
+            <Link
+              href="/signup"
+              className="font-semibold text-blue-600 hover:text-blue-700"
+            >
               Sign up
             </Link>
           </div>
@@ -170,5 +198,5 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
-  )
+  );
 }

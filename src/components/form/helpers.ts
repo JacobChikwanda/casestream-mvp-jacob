@@ -1,7 +1,7 @@
 import React, { JSX } from "react";
 import { Prisma } from "@prisma/client";
 import type { Staff } from "@prisma/client";
-import StaffForm from "./forms/staff.form";
+import { StaffForm } from "./forms";
 
 /**
  * Supported modes for all forms

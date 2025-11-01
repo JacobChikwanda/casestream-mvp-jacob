@@ -11,6 +11,7 @@ export interface LoginResult {
   redirectTo?: string;
   userId?: string;
   accountSlug?: string;
+  accountId?: string;
 }
 
 /**
@@ -18,7 +19,7 @@ export interface LoginResult {
  */
 export async function loginAction(
   email: string,
-  password: string,
+  password: string
 ): Promise<LoginResult> {
   try {
     if (!email || !password) {
@@ -40,8 +41,8 @@ export async function loginAction(
     const supabase = await createSupabaseServerRouteHandler();
 
     // Sign in with Supabase
-    const { data: authData, error: authError } = await supabase.auth
-      .signInWithPassword({
+    const { data: authData, error: authError } =
+      await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -86,7 +87,7 @@ export async function loginAction(
     if (!staffRecord) {
       console.error(
         "[login] Staff record not found for user:",
-        authData.user.id,
+        authData.user.id
       );
       return {
         success: false,
@@ -103,6 +104,7 @@ export async function loginAction(
     }
 
     const accountSlug = staffRecord.account.accountSlug;
+    const accountId = staffRecord.account.id;
 
     // Initialize Supabase admin client to update user metadata
     const supabaseAdmin = createClient(
@@ -113,29 +115,28 @@ export async function loginAction(
           autoRefreshToken: false,
           persistSession: false,
         },
-      },
+      }
     );
 
     // Update app_metadata with accountSlug (merge with existing to avoid overwriting other fields)
     const currentMetadata = authData.user.app_metadata || {};
-    const newMetadata = { ...currentMetadata, accountSlug };
+    const newMetadata = { ...currentMetadata, accountSlug, accountId };
 
-    const { error: updateError } = await supabaseAdmin.auth.admin
-      .updateUserById(
-        authData.user.id,
-        { app_metadata: newMetadata },
-      );
+    const { error: updateError } =
+      await supabaseAdmin.auth.admin.updateUserById(authData.user.id, {
+        app_metadata: newMetadata,
+      });
 
     if (updateError) {
       console.error(
         "[login] Error updating app_metadata:",
-        updateError.message,
+        updateError.message
       );
       // Proceed with login anyway, as metadata update is not critical for this session
     } else {
       console.log(
         "[login] Updated user app_metadata with accountSlug:",
-        accountSlug,
+        accountSlug
       );
     }
 
@@ -143,7 +144,7 @@ export async function loginAction(
       "[login] Login successful for:",
       staffRecord.name,
       "account:",
-      accountSlug,
+      accountSlug
     );
 
     // Determine redirect based on role
@@ -158,6 +159,7 @@ export async function loginAction(
       redirectTo,
       userId: authData.user.id,
       accountSlug,
+      accountId,
     };
   } catch (error) {
     console.error("[login] Server action error:", error);
