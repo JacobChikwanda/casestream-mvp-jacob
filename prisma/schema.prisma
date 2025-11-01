@@ -227,6 +227,7 @@ model Account {
   typeOfActions   TypeOfAction[]
   causeOfActions  CauseOfAction[]
   folders         Folder[]
+  invitations     Invitation[]
 
   @@index([accountSlug])
 }
@@ -300,6 +301,10 @@ model Staff {
 
   // Resume (URL/file path)
   resume                String?
+
+  // Invitation tracking
+  invitationId          String?   @db.Uuid
+  invitation            Invitation? @relation("InvitationToStaff", fields: [invitationId], references: [id], onDelete: SetNull)
 
   // Relationships
   account               Account           @relation(fields: [accountId], references: [id], onDelete: Cascade)
@@ -1095,4 +1100,43 @@ model CauseOfAction {
   @@unique([accountId, causeOfActionName])
   @@index([accountId])
   @@index([typeOfActionId])
+}
+
+// ============================================================================
+// INVITATION MODEL
+// ============================================================================
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  CANCELLED
+}
+
+model Invitation {
+  id            String           @id @default(uuid()) @db.Uuid
+  accountId     String           @db.Uuid
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  createdBy     Staff            @relation("InvitationCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdById   String           @db.Uuid
+
+  // Invitation Details
+  email         String           @db.VarChar(255)
+  token         String           @unique // Secure token for invitation link
+  status        InvitationStatus @default(PENDING)
+  expiresAt     DateTime         // When invitation expires
+
+  // Optional: Pre-fill staff data
+  staffData     Json?            // JSON with pre-filled staff information
+
+  // Relationships
+  account       Account          @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  createdStaff  Staff?           @relation("InvitationToStaff")
+
+  @@unique([accountId, email])
+  @@index([accountId])
+  @@index([token])
+  @@index([status])
+  @@index([expiresAt])
 }

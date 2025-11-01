@@ -9,6 +9,7 @@ import type {
 } from "@/lib/types/server-action";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/supabase";
+import { sendStaffInvitation } from "@/lib/email";
 
 type CreateStaffState = ActionState<StaffFormData>;
 
@@ -96,7 +97,8 @@ export async function createStaffAction(
       leaveDate: clean("leaveDate") ?? "",
       employmentStatus: (clean("employmentStatus") ??
         "ACTIVE") as StaffFormData["employmentStatus"],
-      staffGroup: (clean("staffGroup") ?? "STAFF") as StaffFormData["staffGroup"],
+      staffGroup: (clean("staffGroup") ??
+        "STAFF") as StaffFormData["staffGroup"],
       applicationAdmin: bool("applicationAdmin"),
       reportingToId: clean("reportingToId") ?? "",
 
@@ -212,12 +214,33 @@ export async function createStaffAction(
       },
     });
 
-    // 8. Revalidate cache
+    // 8. Send invitation email (if workEmail is provided)
+    let emailSent = false;
+    if (validated.workEmail) {
+      try {
+        await sendStaffInvitation({
+          name: validated.name,
+          workEmail: validated.workEmail,
+          companyName: "CaseStream", // You can make this configurable later
+        });
+        emailSent = true;
+      } catch (emailError) {
+        // Log email error but don't fail the staff creation
+        console.error(
+          "[createStaffAction] Failed to send invitation email:",
+          emailError
+        );
+      }
+    }
+
+    // 9. Revalidate cache
     revalidatePath("/staff");
 
     return {
       success: true,
-      message: "Staff member created successfully.",
+      message: emailSent
+        ? "Staff member created successfully. Invitation email sent."
+        : "Staff member created successfully.",
     };
   } catch (error) {
     // 9. Centralized error handling
