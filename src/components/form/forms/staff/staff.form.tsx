@@ -4,10 +4,11 @@ import { Form } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { useForm, type Resolver } from "react-hook-form";
+import { useEffect } from "react";
 
 import { type StaffFormData, staffSchema } from "@/lib/validations/staff";
 import { createStaffAction } from "@/actions/staff/createStaff";
-import { useActionState, useEffect } from "react";
+import { useActionState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { useAuthStore } from "@/lib/store/auth";
@@ -16,8 +17,6 @@ import { EmploymentInfoSection } from "./employment.info.section";
 import { CompensationSection } from "./compensation.section";
 import { BankingInfoSection } from "./banking.info.section";
 
-// Define the shape of your default values based on the schema
-// This helps ensure type alignment
 const defaultStaffValues: StaffFormData = {
   // Personal Info
   name: "",
@@ -78,6 +77,7 @@ const defaultStaffValues: StaffFormData = {
 export function StaffForm() {
   const accountId = useAuthStore((state) => state.user?.accountId);
 
+  console.log("Account ID in StaffForm:", accountId);
   const createStaffActionWithAccount = createStaffAction.bind(
     null,
     accountId || ""
@@ -96,33 +96,19 @@ export function StaffForm() {
     defaultValues: defaultStaffValues,
   });
 
-  // ... (rest of the component is unchanged)
-
   useEffect(() => {
     if (state.success) {
       form.reset();
     }
   }, [state.success, form]);
 
-  const onSubmit = async (data: any) => {
+  const handleFormSubmit = form.handleSubmit(async (data) => {
     const formData = new FormData();
-
     Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        // IMPORTANT: The original logic below converts boolean `false` to "false" string,
-        // which might be necessary for your server action using FormData.
-        const stringValue =
-          typeof value === "boolean"
-            ? value
-              ? "true"
-              : "false"
-            : String(value);
-        formData.append(key, stringValue);
-      }
+      formData.append(key, String(value ?? ""));
     });
-
-    formAction(formData);
-  };
+    await formAction(formData);
+  });
 
   return (
     <div className="space-y-6">
@@ -146,7 +132,7 @@ export function StaffForm() {
             <ul className="list-disc list-inside space-y-1">
               {Object.entries(state.errors).map(([field, messages]) => (
                 <li key={field}>
-                  <strong>{field}:</strong> {messages.join(", ")}
+                  <strong>{field}:</strong> {messages?.join(", ")}
                 </li>
               ))}
             </ul>
@@ -155,7 +141,7 @@ export function StaffForm() {
       )}
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <form onSubmit={handleFormSubmit} className="space-y-8">
           <PersonalInfoSection />
           <EmploymentInfoSection />
           <CompensationSection />

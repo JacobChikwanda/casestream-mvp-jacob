@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
 import { staffSchema, type StaffFormData } from "@/lib/validations/staff";
 import type {
@@ -19,7 +18,7 @@ type CreateStaffState = ActionState<StaffFormData>;
  * @param formData - Form data from the client
  */
 export async function createStaffAction(
-  accountId: string, // <-- New required parameter
+  accountId: string,
   prevState: CreateStaffState | null,
   formData: FormData
 ): Promise<ServerActionResult<StaffFormData>> {
@@ -153,7 +152,7 @@ export async function createStaffAction(
     // Create Staff Record
     const newStaff = await prisma.staff.create({
       data: {
-        accountId, // <-- Use the passed accountId
+        accountId,
 
         // Personal
         name: validated.name,
@@ -208,16 +207,19 @@ export async function createStaffAction(
         bankAccountNumber: validated.bankAccountNumber,
 
         // Audit
-        createdById: accountId, // <-- Use the passed accountId
-        updatedById: accountId, // <-- Use the passed accountId
+        createdById: accountId,
+        updatedById: accountId,
       },
     });
 
     console.log("[createStaffAction] New Staff Created:", newStaff);
 
-    // Revalidate and Redirect
     revalidatePath("/staff");
-    redirect("/staff");
+
+    return {
+      success: true,
+      message: "Staff member created successfully.",
+    };
   } catch (error) {
     // Error Handling
     console.error("[createStaffAction] Error:", error);
